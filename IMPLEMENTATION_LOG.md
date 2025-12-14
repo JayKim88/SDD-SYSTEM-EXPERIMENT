@@ -964,7 +964,7 @@ voice-journal-web/
 - [x] Server/Client Component 이슈 해결 ✅
 - [x] Code Generator Agent v2.0 개선 ✅
 - [x] IMPLEMENTATION_LOG 업데이트 ✅
-- [ ] 간단한 Todo 앱으로 재검증
+- [x] 간단한 Todo 앱으로 재검증 ✅ (2025-12-14 완료)
 - [ ] GitHub 저장소 정리 및 README 업데이트
 
 ### 중기 (Step 2)
@@ -1024,26 +1024,77 @@ voice-journal-web/
 
 ---
 
-## 버전 히스토리
+## 작업 히스토리
 
-### v2.0.0 (2025-12-13 오후)
+### 2025-12-14
+
+**Todo 앱 재검증 및 Code Generator 개선**
+
+- ✅ Todo 앱 재검증 실시 (간단한 앱으로 v2.0 검증)
+- ❌ v2.0 검증 실패 발견
+  - AGENT.md에 규칙은 있지만 실제 생성 시 적용 안 됨
+  - buildPrompt()가 AGENT.md의 CRITICAL 규칙을 systemPrompt로만 전달
+  - user prompt에 구체적인 규칙이 없어서 무시됨
+- ✅ Code Generator Agent buildPrompt() 메서드 개선
+  - CRITICAL 규칙들을 user prompt에 직접 포함 (100+ 라인 추가)
+  - Server/Client Component 규칙 + 예시
+  - Provider 패턴 규칙 + 예시 코드
+  - .env.local 생성 규칙 명시
+  - Supabase 클라이언트 패턴 + 예시 코드
+- ✅ Todo 앱 재생성 및 검증 결과
+  - 60개 파일 생성 성공
+  - ✅ Provider 패턴 올바르게 적용 (contexts/QueryProvider.tsx)
+  - ✅ layout.tsx Server Component 유지
+  - ✅ 앱 정상 실행 (http://localhost:3000)
+  - ⚠️ .env.local 여전히 미생성 (수동으로 cp .env.example .env.local 필요)
+- 📊 개선 효과: 부분적 성공
+  - Provider 패턴 자동 적용: 100% ✅
+  - 환경변수 자동 생성: 0% ❌
+
+**남은 과제:**
+- .env.local 자동 생성 규칙 강화 필요
+- Supabase 클라이언트 패턴 적용 검증 필요 (Architecture가 다른 구조 선택)
+
+---
+
+### 2025-12-13 오후
+
+**Voice Journal Web 실행 테스트 및 에러 수정 (v2.0)**
+
 - ✅ Voice Journal Web 실행 테스트 완료
-- ✅ 5가지 실전 에러 발견 및 해결
-- ✅ Code Generator Agent v2.0 개선
-  - Server/Client Component 규칙 추가
-  - Provider 패턴 명시
-  - 환경변수 생성 규칙 추가
-  - Supabase 클라이언트 패턴 추가
-- ✅ AGENT.md에 280+ 라인 규칙 추가
-- ✅ 실행 가능성 0% → 100% 달성
+- ✅ 5가지 실전 Runtime 에러 발견 및 **수동 수정**
+  - Problem 7: 환경변수 누락 (SUPABASE_SERVICE_ROLE_KEY)
+  - Problem 8: QueryClient를 Server Component에서 생성
+  - Problem 9: Button 컴포넌트 'use client' 누락
+  - Problem 10: Page 컴포넌트들 'use client' 누락
+  - Problem 11: 서버 전용 환경변수 클라이언트 접근
+- ✅ Code Generator AGENT.md에 280+ 라인 규칙 추가
+  - Server/Client Component 규칙
+  - Provider 패턴 규칙
+  - 환경변수 생성 규칙
+  - Supabase 클라이언트 패턴
+- ✅ 실행 가능성 0% → 100% 달성 (수동 수정 후)
+- ⚠️ **주의**: 생성된 코드를 수동으로 수정한 것이므로, 자동 생성 검증은 2025-12-14에 실시
 
-### v1.0.0 (2025-12-13 오전)
-- ✅ Step 1 (MVP) 완료
-- ✅ 3개 Core Agent 구현
+---
+
+### 2025-12-13 오전
+
+**Step 1 (MVP) 완료 (v1.0)**
+
+- ✅ 3개 Core Agent 구현 완료
+  - Base Agent 추상 클래스
+  - Spec Parser Agent
+  - Architecture Agent
+  - Code Generator Agent
 - ✅ CLI & Orchestrator 구현
-- ✅ Voice Journal Web 생성 성공
+- ✅ Voice Journal Web 생성 성공 (79개 파일)
 - ✅ 모든 Module not found 에러 해결
-- ✅ 파일 생성률 100% 달성
+  - max_tokens 16K → 64K 증가
+  - AGENT.md 개선 (Configuration 파일 체크리스트)
+  - 프롬프트 개선 (파일 개수 검증, 생성 순서)
+- ✅ 파일 생성률 28% → 104% 달성
+- ✅ Configuration 파일 8개 모두 생성
 
 ---
 
