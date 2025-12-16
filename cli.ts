@@ -5,7 +5,9 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import { SpecParserAgent } from './lib/agents/spec-parser';
 import { ArchitectureAgent } from './lib/agents/architecture';
-import { CodeGeneratorAgent } from './lib/agents/code-generator';
+import { FrontendAgent } from './lib/agents/frontend';
+import { BackendAgent } from './lib/agents/backend';
+import { ConfigAgent } from './lib/agents/config';
 
 /**
  * SDD System CLI
@@ -58,23 +60,60 @@ async function main() {
     });
     console.log(`   ✅ Generated: ${context.tempDir}/architecture.json\n`);
 
-    // Phase 2: Code Generator Agent
-    console.log('💻 Phase 2: Code Generator Agent');
-    console.log('   Generating code files...');
-    const codeGenerator = new CodeGeneratorAgent(context);
-    const codeOutput = await codeGenerator.execute({
+    // Phase 2: Frontend Agent
+    console.log('🎨 Phase 2: Frontend Agent');
+    console.log('   Generating React/Next.js components...');
+    const frontendAgent = new FrontendAgent(context);
+    const frontendOutput = await frontendAgent.execute({
       parsedSpec,
       architecture: architectureOutput,
     });
+    console.log(`   ✅ Generated: ${frontendOutput.filesGenerated} frontend files`);
+    console.log(`      - Components: ${frontendOutput.components.length}`);
+    console.log(`      - Pages: ${frontendOutput.pages.length}`);
+    console.log(`      - Providers: ${frontendOutput.providers.length}\n`);
 
-    console.log(`   ✅ Generated: ${codeOutput.projectPath}\n`);
+    // Phase 3: Backend Agent
+    console.log('⚙️  Phase 3: Backend Agent');
+    console.log('   Generating API routes & server logic...');
+    const backendAgent = new BackendAgent(context);
+    const backendOutput = await backendAgent.execute({
+      parsedSpec,
+      architecture: architectureOutput,
+    });
+    console.log(`   ✅ Generated: ${backendOutput.filesGenerated} backend files`);
+    console.log(`      - API Routes: ${backendOutput.apiRoutes.length}`);
+    console.log(`      - Server Actions: ${backendOutput.serverActions.length}`);
+    console.log(`      - Middleware: ${backendOutput.middleware.length}`);
+    console.log(`      - Utilities: ${backendOutput.utilities.length}\n`);
+
+    // Phase 4: Config Agent
+    console.log('📦 Phase 4: Config Agent');
+    console.log('   Generating config files...');
+    const configAgent = new ConfigAgent(context);
+    const configOutput = await configAgent.execute({
+      parsedSpec,
+      architecture: architectureOutput,
+    });
+    console.log(`   ✅ Generated: ${configOutput.filesGenerated} config files\n`);
 
     // 성공 메시지
     console.log('🎉 Success! Your app is ready.\n');
-    console.log(`📦 Project: ${codeOutput.projectPath}`);
-    console.log(`📄 Files: ${codeOutput.filesGenerated}`);
+    console.log(`📦 Project: ${configOutput.projectPath}`);
+    console.log(`📄 Files Generated:`);
+    console.log(`   Frontend: ${frontendOutput.filesGenerated} files`);
+    console.log(`      - Components: ${frontendOutput.components.length}`);
+    console.log(`      - Pages: ${frontendOutput.pages.length}`);
+    console.log(`      - Providers: ${frontendOutput.providers.length}`);
+    console.log(`   Backend: ${backendOutput.filesGenerated} files`);
+    console.log(`      - API Routes: ${backendOutput.apiRoutes.length}`);
+    console.log(`      - Server Actions: ${backendOutput.serverActions.length}`);
+    console.log(`      - Middleware: ${backendOutput.middleware.length}`);
+    console.log(`      - Utilities: ${backendOutput.utilities.length}`);
+    console.log(`   Config: ${configOutput.filesGenerated} files`);
+    console.log(`   Total: ${frontendOutput.filesGenerated + backendOutput.filesGenerated + configOutput.filesGenerated} files`);
     console.log('\n📖 Next steps:');
-    console.log(`   cd ${codeOutput.projectPath}`);
+    console.log(`   cd ${configOutput.projectPath}`);
     console.log('   npm install');
     console.log('   npm run dev\n');
 
