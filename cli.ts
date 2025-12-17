@@ -9,6 +9,9 @@ import { DatabaseAgent } from './lib/agents/database';
 import { FrontendAgent } from './lib/agents/frontend';
 import { BackendAgent } from './lib/agents/backend';
 import { ConfigAgent } from './lib/agents/config';
+import { TestingAgent } from './lib/agents/testing';
+import { DeploymentAgent } from './lib/agents/deployment';
+import { FixAgent } from './lib/agents/fix';
 
 /**
  * SDD System CLI
@@ -112,6 +115,50 @@ async function main() {
     });
     console.log(`   ✅ Generated: ${configOutput.filesGenerated} config files\n`);
 
+    // Phase 6: Testing Agent
+    console.log('🧪 Phase 6: Testing Agent');
+    console.log('   Generating test suites...');
+    const testingAgent = new TestingAgent(context);
+    const testingOutput = await testingAgent.execute({
+      parsedSpec,
+      architecture: architectureOutput,
+      frontend: frontendOutput,
+      backend: backendOutput,
+    });
+    console.log(`   ✅ Generated: ${testingOutput.filesGenerated} test files`);
+    console.log(`      - Component tests: ${testingOutput.componentTests.length}`);
+    console.log(`      - API tests: ${testingOutput.apiTests.length}`);
+    console.log(`      - E2E tests: ${testingOutput.e2eTests.length}`);
+    console.log(`      - Config files: ${testingOutput.configFiles.length}\n`);
+
+    // Phase 7: Deployment Agent
+    console.log('🚀 Phase 7: Deployment Agent');
+    console.log('   Generating deployment files...');
+    const deploymentAgent = new DeploymentAgent(context);
+    const deploymentOutput = await deploymentAgent.execute({
+      parsedSpec,
+      architecture: architectureOutput,
+      database: databaseOutput,
+    });
+    console.log(`   ✅ Generated: ${deploymentOutput.filesGenerated} deployment files\n`);
+
+    // Phase 8: Fix Agent
+    console.log('🔧 Phase 8: Fix Agent');
+    console.log('   Checking and fixing errors...');
+    const fixAgent = new FixAgent(context);
+    const fixOutput = await fixAgent.execute({
+      projectPath: path.join(context.outputDir!, architectureOutput.projectName),
+      parsedSpec,
+      maxAttempts: 3,
+      checkTypes: true,
+      checkLint: true,
+    });
+    console.log(`   ${fixOutput.success ? '✅' : '⚠️'} Fix completed:`);
+    console.log(`      - Attempts: ${fixOutput.attempts}`);
+    console.log(`      - Errors fixed: ${fixOutput.fixedErrors.length}`);
+    console.log(`      - Remaining errors: ${fixOutput.remainingErrors.length}`);
+    console.log(`      - Files modified: ${fixOutput.filesModified.length}\n`);
+
     // 성공 메시지
     console.log('🎉 Success! Your app is ready.\n');
     console.log(`📦 Project: ${configOutput.projectPath}`);
@@ -130,7 +177,17 @@ async function main() {
     console.log(`      - Middleware: ${backendOutput.middleware.length}`);
     console.log(`      - Utilities: ${backendOutput.utilities.length}`);
     console.log(`   Config: ${configOutput.filesGenerated} files`);
-    console.log(`   Total: ${databaseOutput.filesGenerated + frontendOutput.filesGenerated + backendOutput.filesGenerated + configOutput.filesGenerated} files`);
+    console.log(`   Testing: ${testingOutput.filesGenerated} files`);
+    console.log(`      - Component tests: ${testingOutput.componentTests.length}`);
+    console.log(`      - API tests: ${testingOutput.apiTests.length}`);
+    console.log(`      - E2E tests: ${testingOutput.e2eTests.length}`);
+    console.log(`      - Config files: ${testingOutput.configFiles.length}`);
+    console.log(`   Deployment: ${deploymentOutput.filesGenerated} files`);
+    console.log(`   Total: ${databaseOutput.filesGenerated + frontendOutput.filesGenerated + backendOutput.filesGenerated + configOutput.filesGenerated + testingOutput.filesGenerated + deploymentOutput.filesGenerated} files`);
+    console.log(`\n🔧 Error Fixes:`);
+    console.log(`   Errors fixed: ${fixOutput.fixedErrors.length}`);
+    console.log(`   Remaining errors: ${fixOutput.remainingErrors.length}`);
+    console.log(`   Status: ${fixOutput.success ? '✅ All errors fixed' : '⚠️ Some errors remain'}`);
     console.log('\n📖 Next steps:');
     console.log(`   cd ${configOutput.projectPath}`);
     console.log('   npm install');
@@ -141,7 +198,17 @@ async function main() {
       console.log('   npm run db:push');
       console.log('   npm run db:seed');
     }
-    console.log('   npm run dev\n');
+    console.log('   npm run dev');
+    if (testingOutput.filesGenerated > 0) {
+      console.log('   # Run tests');
+      console.log('   npm run test          # Run unit & integration tests');
+      console.log('   npm run test:e2e      # Run E2E tests');
+    }
+    if (deploymentOutput.filesGenerated > 0) {
+      console.log('   # Or run with Docker');
+      console.log('   docker-compose up -d  # Start with Docker');
+    }
+    console.log('');
 
     // clean 옵션이 있으면 .temp 폴더 삭제
     if (options.clean) {

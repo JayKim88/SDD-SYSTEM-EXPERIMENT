@@ -98,7 +98,7 @@ npm run dev
 
 ## Agent 구성
 
-### ✅ 구현 완료 (6개)
+### ✅ 구현 완료 (9개) 🎉
 
 #### 1. Spec Parser Agent
 **역할**: Markdown 명세서 → 구조화된 JSON
@@ -155,48 +155,52 @@ Output: app/api/**/ route.ts
 
 ```
 Input:  parsedSpec + architecture + database (ORM 감지)
-Output: package.json (Prisma deps 자동 포함)
+Output: package.json (Prisma deps + test deps 자동 포함)
         tsconfig.json
         tailwind.config.ts
         .env.example
         (9 files)
 ```
 
----
-
-### ⏳ 구현 예정 (3개)
-
-#### 7. Deployment Agent
-**역할**: Docker, CI/CD 설정 생성 (템플릿 기반)
-
-```
-Output: Dockerfile
-        docker-compose.yml
-        .github/workflows/ci.yml
-```
-
-**구현 시간**: ~1시간
-
-#### 8. Testing Agent
+#### 7. Testing Agent
 **역할**: 테스트 파일 자동 생성
 
 ```
+Input:  parsedSpec + architecture + frontend + backend
 Output: components/**/*.test.tsx
         app/api/**/*.test.ts
         e2e/**/*.spec.ts
+        vitest.config.ts
+        playwright.config.ts
+        (~15-50 files)
 ```
 
-**구현 시간**: ~2-3시간
+#### 8. Deployment Agent
+**역할**: Docker, CI/CD 설정 생성 (템플릿 기반, AI 호출 없음)
+
+```
+Input:  parsedSpec + architecture + database (ORM 감지)
+Output: Dockerfile
+        docker-compose.yml
+        .dockerignore
+        .github/workflows/ci.yml
+        DEPLOYMENT.md
+        (5 files)
+```
 
 #### 9. Fix Agent
-**역할**: 빌드 에러 자동 수정
+**역할**: TypeScript/ESLint 에러 자동 수정
 
 ```
-Input:  TypeScript/ESLint 에러
-Output: 자동 수정된 코드
+Input:  projectPath (생성된 프로젝트)
+Process:
+  1. TypeScript/ESLint 에러 검사
+  2. 에러를 파일별로 그룹화
+  3. Claude에게 각 파일 수정 요청
+  4. 수정된 코드 적용
+  5. 재검증 (최대 3회)
+Output: 수정된 파일 목록, 에러 수정 통계
 ```
-
-**구현 시간**: ~4-6시간
 
 ---
 
@@ -223,9 +227,18 @@ Phase 4: Backend Agent
     → app/api/, lib/actions/ (16 files)
     ↓
 Phase 5: Config Agent (Database ORM 인식)
-    → package.json (Prisma deps), configs (9 files)
+    → package.json (Prisma deps + test deps), configs (9 files)
     ↓
-Complete Next.js App (64 files)
+Phase 6: Testing Agent
+    → test files, test configs (~15-50 files)
+    ↓
+Phase 7: Deployment Agent
+    → Dockerfile, CI/CD configs (5 files)
+    ↓
+Phase 8: Fix Agent
+    → 에러 검사 및 자동 수정 (TypeScript + ESLint)
+    ↓
+Complete Production-Ready Next.js App (~90-110 files, 에러 수정 완료)
 ```
 
 ### CLI 실행 예시
@@ -268,6 +281,26 @@ $ npm run generate specs/todo-app.md
    Detected ORM from Database Agent: prisma
    ✅ Generated: 9 config files
 
+🧪 Phase 6: Testing Agent
+   Generating test suites...
+   ✅ Generated: 35 test files
+      - Component tests: 14
+      - API tests: 2
+      - E2E tests: 3
+      - Config files: 4
+
+🚀 Phase 7: Deployment Agent
+   Generating deployment files...
+   ✅ Generated: 5 deployment files
+
+🔧 Phase 8: Fix Agent
+   Checking and fixing errors...
+   ✅ Fix completed:
+      - Attempts: 2
+      - Errors fixed: 8
+      - Remaining errors: 0
+      - Files modified: 3
+
 🎉 Success! Your app is ready.
 
 📦 Project: output/todo-app
@@ -276,7 +309,9 @@ $ npm run generate specs/todo-app.md
    Frontend: 27 files
    Backend: 16 files
    Config: 9 files
-   Total: 64 files
+   Testing: 35 files
+   Deployment: 5 files
+   Total: 104 files
 
 📖 Next steps:
    cd output/todo-app
@@ -287,10 +322,15 @@ $ npm run generate specs/todo-app.md
    npm run db:push
    npm run db:seed
    npm run dev
+   # Run tests
+   npm run test          # Run unit & integration tests
+   npm run test:e2e      # Run E2E tests
+   # Or run with Docker
+   docker-compose up -d  # Start with Docker
 ```
 
-**실행 시간**: ~3분 (Todo 앱 기준)
-**Token 사용**: ~90K tokens (~$0.30-0.50)
+**실행 시간**: ~4-5분 (Todo 앱 기준, 테스트 포함)
+**Token 사용**: ~150K tokens (~$0.50-0.70)
 
 ---
 
@@ -308,14 +348,13 @@ sdd-system/                          # SDD 시스템 루트
 │       │   └── types.ts
 │       │
 │       ├── architecture/           # Agent 2
-│       ├── database/               # Agent 3 (NEW)
-│       ├── frontend/               # Agent 4 (NEW)
-│       ├── backend/                # Agent 5 (NEW)
-│       ├── config/                 # Agent 6 (NEW)
-│       │
-│       ├── deployment/             # Agent 7 (TODO)
-│       ├── testing/                # Agent 8 (TODO)
-│       └── fix/                    # Agent 9 (TODO)
+│       ├── database/               # Agent 3
+│       ├── frontend/               # Agent 4
+│       ├── backend/                # Agent 5
+│       ├── config/                 # Agent 6
+│       ├── testing/                # Agent 7
+│       ├── deployment/             # Agent 8
+│       └── fix/                    # Agent 9 ✅
 │
 ├── specs/                          # 📝 입력: Spec 파일
 │   ├── todo-app.md                # Todo App Spec
@@ -491,7 +530,10 @@ try {
 | Frontend | ~46K | $0.15 |
 | Backend | ~24K | $0.08 |
 | Config | 0 (템플릿) | $0.00 |
-| **Total** | **~90K** | **~$0.28** |
+| Testing | ~60K | $0.20 |
+| Deployment | 0 (템플릿) | $0.00 |
+| Fix | ~20-40K | $0.07-0.13 |
+| **Total** | **~170-190K** | **~$0.55-0.61** |
 
 ### 실행 시간 (Todo 앱 기준)
 
@@ -503,7 +545,10 @@ try {
 | Frontend | ~60초 |
 | Backend | ~40초 |
 | Config | ~1초 |
-| **Total** | **~3분** |
+| Testing | ~60-90초 |
+| Deployment | ~1초 |
+| Fix | ~30-60초 |
+| **Total** | **~5-6분** |
 
 ---
 
@@ -514,9 +559,10 @@ try {
 - 불필요한 분리
 - 유지보수 어려움
 
-### ✅ 최종 설계: 9개 Agent
-- **6개 Core Agents**: MVP 완성 (현재 구현 완료)
-- **3개 Optional Agents**: 선택적 추가 (미구현)
+### ✅ 최종 설계: 9개 Agent (모두 완료!)
+- **6개 Core Agents**: 기본 앱 생성
+- **2개 Quality Agents**: 테스트 & 배포
+- **1개 Fix Agent**: 에러 자동 수정
 - **19개 Agent 제거**: 불필요하거나 통합 가능
 
 **제거된 Agent들**:
@@ -530,28 +576,28 @@ try {
 
 ## 로드맵
 
-### v1.0 (현재) ✅
+### v1.0 (현재) ✅ - 9개 Agent 완성!
 - [x] 6개 Core Agent 구현
 - [x] Todo App 생성 성공
 - [x] Database Agent (Prisma 지원)
 - [x] Config Agent (ORM 자동 감지)
+- [x] Testing Agent (Vitest + Playwright)
+- [x] Deployment Agent (Docker + CI/CD)
+- [x] Fix Agent (TypeScript/ESLint 에러 자동 수정) 🎉
 
-### v1.1 (다음)
-- [ ] Deployment Agent 추가
-- [ ] Testing Agent 추가
-- [ ] Fix Agent 추가
-
-### v1.2 (실행 제어)
+### v1.1 (다음) - 실행 제어 & 최적화
 - [ ] Interactive Mode (각 Agent 후 결과 확인)
 - [ ] Resume from Checkpoint (특정 Phase부터 재개)
 - [ ] Agent 선택 실행 (원하는 Agent만 실행)
 - [ ] Dry Run (실행 전 미리보기 & 비용 예측)
+- [ ] Incremental Generation (변경된 부분만 재생성)
 
-### v2.0 (미래)
+### v2.0 (미래) - 확장 & 생태계
 - [ ] Agent 병렬 실행 (실행 시간 단축)
-- [ ] Incremental Generation (변경된 파일만 재생성)
-- [ ] Web UI (GUI 기반 Spec 작성)
+- [ ] Web UI (GUI 기반 Spec 작성 & 실시간 미리보기)
 - [ ] Agent Marketplace (커뮤니티 Agent 공유)
+- [ ] Multi-framework 지원 (Vue, Svelte, Angular)
+- [ ] Cloud Integration (AWS, Azure, GCP 원클릭 배포)
 
 ---
 
