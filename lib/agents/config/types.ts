@@ -1,5 +1,6 @@
 import { SpecParserOutput } from '../spec-parser/types';
 import { ArchitectureOutput } from '../architecture/types';
+import { DatabaseOutput } from '../database/types';
 
 /**
  * Config Agent Input
@@ -7,6 +8,7 @@ import { ArchitectureOutput } from '../architecture/types';
 export interface ConfigInput {
   parsedSpec: SpecParserOutput;      // Spec Parser 결과
   architecture: ArchitectureOutput;  // Architecture 결과
+  database?: DatabaseOutput;         // Database 결과 (optional)
 }
 
 /**

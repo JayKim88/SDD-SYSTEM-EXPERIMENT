@@ -5,6 +5,7 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import { SpecParserAgent } from './lib/agents/spec-parser';
 import { ArchitectureAgent } from './lib/agents/architecture';
+import { DatabaseAgent } from './lib/agents/database';
 import { FrontendAgent } from './lib/agents/frontend';
 import { BackendAgent } from './lib/agents/backend';
 import { ConfigAgent } from './lib/agents/config';
@@ -60,8 +61,21 @@ async function main() {
     });
     console.log(`   ✅ Generated: ${context.tempDir}/architecture.json\n`);
 
-    // Phase 2: Frontend Agent
-    console.log('🎨 Phase 2: Frontend Agent');
+    // Phase 2: Database Agent
+    console.log('💾 Phase 2: Database Agent');
+    console.log('   Generating database schema & ORM code...');
+    const databaseAgent = new DatabaseAgent(context);
+    const databaseOutput = await databaseAgent.execute({
+      parsedSpec,
+      architecture: architectureOutput,
+    });
+    console.log(`   ✅ Generated: ${databaseOutput.filesGenerated} database files`);
+    console.log(`      - Schema: ${databaseOutput.schemaFiles.length}`);
+    console.log(`      - Seeds: ${databaseOutput.seedFiles.length}`);
+    console.log(`      - Clients: ${databaseOutput.clientFiles.length}\n`);
+
+    // Phase 3: Frontend Agent
+    console.log('🎨 Phase 3: Frontend Agent');
     console.log('   Generating React/Next.js components...');
     const frontendAgent = new FrontendAgent(context);
     const frontendOutput = await frontendAgent.execute({
@@ -73,8 +87,8 @@ async function main() {
     console.log(`      - Pages: ${frontendOutput.pages.length}`);
     console.log(`      - Providers: ${frontendOutput.providers.length}\n`);
 
-    // Phase 3: Backend Agent
-    console.log('⚙️  Phase 3: Backend Agent');
+    // Phase 4: Backend Agent
+    console.log('⚙️  Phase 4: Backend Agent');
     console.log('   Generating API routes & server logic...');
     const backendAgent = new BackendAgent(context);
     const backendOutput = await backendAgent.execute({
@@ -87,13 +101,14 @@ async function main() {
     console.log(`      - Middleware: ${backendOutput.middleware.length}`);
     console.log(`      - Utilities: ${backendOutput.utilities.length}\n`);
 
-    // Phase 4: Config Agent
-    console.log('📦 Phase 4: Config Agent');
+    // Phase 5: Config Agent
+    console.log('📦 Phase 5: Config Agent');
     console.log('   Generating config files...');
     const configAgent = new ConfigAgent(context);
     const configOutput = await configAgent.execute({
       parsedSpec,
       architecture: architectureOutput,
+      database: databaseOutput,
     });
     console.log(`   ✅ Generated: ${configOutput.filesGenerated} config files\n`);
 
@@ -101,6 +116,10 @@ async function main() {
     console.log('🎉 Success! Your app is ready.\n');
     console.log(`📦 Project: ${configOutput.projectPath}`);
     console.log(`📄 Files Generated:`);
+    console.log(`   Database: ${databaseOutput.filesGenerated} files`);
+    console.log(`      - Schema: ${databaseOutput.schemaFiles.length}`);
+    console.log(`      - Seeds: ${databaseOutput.seedFiles.length}`);
+    console.log(`      - Clients: ${databaseOutput.clientFiles.length}`);
     console.log(`   Frontend: ${frontendOutput.filesGenerated} files`);
     console.log(`      - Components: ${frontendOutput.components.length}`);
     console.log(`      - Pages: ${frontendOutput.pages.length}`);
@@ -111,10 +130,17 @@ async function main() {
     console.log(`      - Middleware: ${backendOutput.middleware.length}`);
     console.log(`      - Utilities: ${backendOutput.utilities.length}`);
     console.log(`   Config: ${configOutput.filesGenerated} files`);
-    console.log(`   Total: ${frontendOutput.filesGenerated + backendOutput.filesGenerated + configOutput.filesGenerated} files`);
+    console.log(`   Total: ${databaseOutput.filesGenerated + frontendOutput.filesGenerated + backendOutput.filesGenerated + configOutput.filesGenerated} files`);
     console.log('\n📖 Next steps:');
     console.log(`   cd ${configOutput.projectPath}`);
     console.log('   npm install');
+    if (databaseOutput.filesGenerated > 0) {
+      console.log('   # Set up database');
+      console.log('   cp .env.example .env.local');
+      console.log('   # Edit .env.local with your DATABASE_URL');
+      console.log('   npm run db:push');
+      console.log('   npm run db:seed');
+    }
     console.log('   npm run dev\n');
 
     // clean 옵션이 있으면 .temp 폴더 삭제
