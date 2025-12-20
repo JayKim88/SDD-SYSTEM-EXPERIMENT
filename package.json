@@ -7,7 +7,11 @@
     "dev": "tsx watch cli.ts",
     "build": "tsc",
     "generate": "tsx cli.ts",
-    "test": "vitest"
+    "test": "vitest",
+    "spec:new": "tsx spec-writer-cli.ts new",
+    "spec:refine": "tsx spec-writer-cli.ts refine",
+    "spec:review": "tsx spec-writer-cli.ts review",
+    "spec:help": "tsx spec-writer-cli.ts help"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.0",

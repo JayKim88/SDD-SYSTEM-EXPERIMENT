@@ -1,6 +1,8 @@
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { execSync } from 'child_process';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 import { BaseAgent } from '../base-agent';
 import {
   FixInput,
@@ -11,12 +13,17 @@ import {
   ErrorGroup,
 } from './types';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 /**
  * Fix Agent
  *
  * TypeScript/ESLint 에러 자동 수정 Agent
  */
 export class FixAgent extends BaseAgent<FixInput, FixOutput> {
+  private instructions?: string;
+
   constructor(context = {}) {
     super('Fix', '1.0.0', context);
   }
@@ -24,6 +31,9 @@ export class FixAgent extends BaseAgent<FixInput, FixOutput> {
   async execute(input: FixInput): Promise<FixOutput> {
     this.log(`Starting Fix Agent`);
     this.log(`Project: ${input.projectPath}`);
+
+    // Load AGENT.md instructions once
+    this.instructions = await this.loadInstructions(__dirname);
 
     const maxAttempts = input.maxAttempts ?? 3;
     const checkTypes = input.checkTypes ?? true;
@@ -331,6 +341,10 @@ export class FixAgent extends BaseAgent<FixInput, FixOutput> {
     group: ErrorGroup,
     fileContent: string
   ): Promise<string | null> {
+    if (!this.instructions) {
+      throw new Error('Instructions not loaded. Call execute() first.');
+    }
+
     const errorList = group.errors
       .map(
         (err, idx) =>
@@ -338,8 +352,7 @@ export class FixAgent extends BaseAgent<FixInput, FixOutput> {
       )
       .join('\n');
 
-    const prompt = `You are a code fixing expert. Fix the following errors in this TypeScript/JavaScript file.
-
+    const prompt = `
 # File: ${group.file}
 
 # Errors (${group.errors.length} total):
@@ -350,43 +363,16 @@ ${errorList}
 ${fileContent}
 \`\`\`
 
-# Instructions:
-1. Fix ALL errors listed above
-2. Preserve all existing functionality
-3. Maintain code style and formatting
-4. Do NOT add comments explaining the fixes
-5. Do NOT add new features
-6. Return ONLY the fixed code, no explanations
-
-# Output Format:
-Return the complete fixed code in a single code block:
-
-\`\`\`typescript
-// Fixed code here
-\`\`\``;
+Please fix all the errors listed above following the instructions.
+`.trim();
 
     try {
       this.log(`Requesting fix from Claude for ${group.file}...`);
 
-      const message = await this.anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 16000,
-        temperature: 0,
-        messages: [
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-      });
-
-      const content = message.content[0];
-      if (content.type !== 'text') {
-        throw new Error('Unexpected response type from Claude');
-      }
+      const response = await this.callClaude(prompt, this.instructions);
 
       // Extract code from response
-      const fixedCode = this.extractCodeBlock(content.text);
+      const fixedCode = this.extractCodeBlock(response);
 
       if (!fixedCode) {
         this.log(`Failed to extract fixed code from Claude response`, true);

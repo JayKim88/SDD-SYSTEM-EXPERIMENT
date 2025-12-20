@@ -23,11 +23,11 @@ Specification(명세서)를 작성하면 AI Agent들이 자동으로 완전한 �
 ### 핵심 개념
 
 ```
-Spec (명세서) → 9개 AI Agents → 완전한 Next.js 앱
+Spec (명세서) → 10개 AI Agents → 완전한 Next.js 앱
 ```
 
 **Input**: Markdown 형식의 애플리케이션 명세서
-**Process**: 9개의 전문화된 AI Agent가 단계적으로 코드 생성
+**Process**: 10개의 전문화된 AI Agent가 단계적으로 코드 생성
 **Output**: 즉시 실행 가능한 Next.js/React 앱
 
 ### 특징
@@ -36,28 +36,52 @@ Spec (명세서) → 9개 AI Agents → 완전한 Next.js 앱
 - ✅ **AI-Powered**: Claude Sonnet 4.5 기반 Agent 시스템
 - ✅ **전문화된 Agents**: 각 Agent가 특정 영역 담당
 - ✅ **프로덕션 품질**: TypeScript, Accessibility, Best practices
-- ✅ **점진적 확장**: 6개 Core Agent 완성 + 3개 선택적 추가
+- ✅ **점진적 확장**: 8개 Core Agent 완성 + 2개 선택적 추가
 
 ---
 
 ## Quick Start
 
-### 1. 설치
+### 방법 1: Spec Writer Agent 사용 (권장) ⭐
+
+AI가 대화형으로 spec을 작성해줍니다!
 
 ```bash
+# 1. 설치
 git clone <repository-url>
 cd sdd-system
 npm install
+
+# 2. 환경 변수 설정
+echo "ANTHROPIC_API_KEY=your_api_key_here" > .env
+
+# 3. 대화형 spec 작성
+npm run spec:new -- --idea "Personal finance tracker" --template financial
+
+# 4. 생성된 spec으로 앱 생성
+npm run generate specs/personal-finance-tracker.md
+
+# 5. 실행
+cd output/personal-finance-tracker
+npm install
+npm run dev
 ```
 
-### 2. 환경 변수 설정
+### 방법 2: 수동 Spec 작성
+
+직접 spec을 작성할 수도 있습니다.
 
 ```bash
-# .env 파일 생성
-echo "ANTHROPIC_API_KEY=your_api_key_here" > .env
-```
+# 1. 설치
+git clone <repository-url>
+cd sdd-system
+npm install
 
-### 3. Spec 작성
+# 2. 환경 변수 설정
+echo "ANTHROPIC_API_KEY=your_api_key_here" > .env
+
+# 3. Spec 파일 생성
+```
 
 `specs/my-app.md` 파일 생성:
 
@@ -80,15 +104,11 @@ echo "ANTHROPIC_API_KEY=your_api_key_here" > .env
 - Todo 삭제
 ```
 
-### 4. 앱 생성
-
 ```bash
+# 4. 앱 생성
 npm run generate specs/my-app.md
-```
 
-### 5. 실행
-
-```bash
+# 5. 실행
 cd output/my-app
 npm install
 npm run dev
@@ -98,7 +118,35 @@ npm run dev
 
 ## Agent 구성
 
-### ✅ 구현 완료 (9개) 🎉
+### ✅ 구현 완료 (8개) + ⏳ 구현 예정 (2개)
+
+#### 0. Spec Writer Agent ⭐ NEW!
+**역할**: AI 대화형 spec 작성, 개선, 검토
+
+```
+Input:  사용자 아이디어 또는 기존 spec
+Output: 완성된 specs/*.md 파일
+Modes:  new (신규), refine (개선), review (검토)
+```
+
+**사용법**:
+```bash
+# 새 spec 작성
+npm run spec:new -- --idea "E-commerce platform" --template ecommerce
+
+# 기존 spec 개선
+npm run spec:refine specs/my-app.md
+
+# Spec 검토 및 자동 수정
+npm run spec:review specs/my-app.md --fix
+```
+
+**특징**:
+- 🤖 AI 대화형 기획 지원
+- 📝 데이터 모델, API, 페이지 자동 설계
+- ✅ 일관성 자동 검증 (Critical 이슈 자동 발견)
+- 💡 기술 스택 추천
+- 🔧 자동 수정 기능
 
 #### 1. Spec Parser Agent
 **역할**: Markdown 명세서 → 구조화된 JSON
@@ -162,8 +210,8 @@ Output: package.json (Prisma deps + test deps 자동 포함)
         (9 files)
 ```
 
-#### 7. Testing Agent
-**역할**: 테스트 파일 자동 생성
+#### 7. Testing Agent ⏳
+**역할**: 테스트 파일 자동 생성 (구현 예정)
 
 ```
 Input:  parsedSpec + architecture + frontend + backend
@@ -175,8 +223,8 @@ Output: components/**/*.test.tsx
         (~15-50 files)
 ```
 
-#### 8. Deployment Agent
-**역할**: Docker, CI/CD 설정 생성 (템플릿 기반, AI 호출 없음)
+#### 8. Deployment Agent ⏳
+**역할**: Docker, CI/CD 설정 생성 (구현 예정, 템플릿 기반)
 
 ```
 Input:  parsedSpec + architecture + database (ORM 감지)
@@ -188,7 +236,7 @@ Output: Dockerfile
         (5 files)
 ```
 
-#### 9. Fix Agent
+#### 9. Fix Agent ✅
 **역할**: TypeScript/ESLint 에러 자동 수정
 
 ```
@@ -380,8 +428,10 @@ sdd-system/                          # SDD 시스템 루트
 ├── package.json                    # SDD 시스템 의존성
 ├── tsconfig.json
 ├── README.md                       # 이 파일
-├── AGENT_ARCHITECTURE.md           # Agent 상세 설계
-├── IMPLEMENTATION_LOG.md           # 구현 기록
+├── docs/                           # 프로젝트 문서
+│   ├── AGENT_ARCHITECTURE.md      # Agent 상세 설계
+│   ├── IMPLEMENTATION_GUIDE.md    # 구현 가이드
+│   └── IMPLEMENTATION_LOG.md      # 구현 기록
 └── .env                            # API Keys
 ```
 
@@ -489,8 +539,9 @@ try {
 ## 문서
 
 ### 상세 문서
-- [AGENT_ARCHITECTURE.md](./AGENT_ARCHITECTURE.md) - Agent 상세 설계 (9개 Agent 명세)
-- [IMPLEMENTATION_LOG.md](./IMPLEMENTATION_LOG.md) - 구현 기록 및 테스트 결과
+- [AGENT_ARCHITECTURE.md](./docs/AGENT_ARCHITECTURE.md) - Agent 상세 설계 (10개 Agent 명세)
+- [IMPLEMENTATION_GUIDE.md](./docs/IMPLEMENTATION_GUIDE.md) - Agent 구현 가이드
+- [IMPLEMENTATION_LOG.md](./docs/IMPLEMENTATION_LOG.md) - 구현 기록 및 테스트 결과
 
 ### Agent별 지시사항 (AGENT.md)
 - [Spec Parser AGENT.md](./lib/agents/spec-parser/AGENT.md)

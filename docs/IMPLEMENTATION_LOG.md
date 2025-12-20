@@ -1007,7 +1007,7 @@ voice-journal-web/
 ## 참고 자료
 
 ### 관련 문서
-- [README.md](./README.md) - 프로젝트 소개 및 사용법
+- [README.md](../README.md) - 프로젝트 소개 및 사용법
 - [AGENT_ARCHITECTURE.md](./AGENT_ARCHITECTURE.md) - Agent 아키텍처 설계
 - [IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md) - Agent 구현 가이드
 
@@ -1025,6 +1025,251 @@ voice-journal-web/
 ---
 
 ## 작업 히스토리
+
+### 2025-12-20
+
+**Spec Writer Agent 구현 완료**
+
+#### ✅ Spec Writer Agent 구현 (Agent #0)
+
+**배경**:
+- 사용자가 Spec 작성에 어려움을 겪는 경우가 많음
+- AI 기반 대화형 Spec 작성 도구 필요
+- SDD System의 시작점을 자동화
+
+**구현 파일**:
+- `lib/agents/spec-writer/types.ts` - Input/Output 타입 정의 (151줄)
+- `lib/agents/spec-writer/AGENT.md` - Claude Instructions (620줄)
+- `lib/agents/spec-writer/index.ts` - Agent 구현 (410줄)
+- `lib/agents/spec-writer/templates/basic.md` - 기본 템플릿
+- `lib/agents/spec-writer/templates/financial.md` - 금융 앱 템플릿
+- `spec-writer-cli.ts` - Standalone CLI (202줄)
+
+**3가지 모드**:
+
+1. **NEW Mode** - 새 Spec 작성
+   - 사용자 아이디어를 Spec으로 변환
+   - 템플릿 기반 생성 가능 (basic, financial, ecommerce, social 등)
+   - 대화형 질문을 통한 정보 수집
+
+2. **REFINE Mode** - 기존 Spec 개선
+   - 누락된 섹션 채우기
+   - 불일치 수정
+   - 데이터 모델, API 엔드포인트, 페이지 추가
+
+3. **REVIEW Mode** - Spec 검토 및 검증
+   - 일관성(Consistency) 점수 (0-100)
+   - 완전성(Completeness) 점수 (0-100)
+   - 실현 가능성(Feasibility) 점수 (0-100)
+   - 종합(Overall) 점수 (0-100)
+   - 이슈 목록 (critical, warning, info)
+   - 개선 제안 목록
+   - 자동 수정(--fix) 옵션
+
+**주요 기능**:
+- `executeNewMode()` - 템플릿 로드 + Claude 호출 + Spec 생성
+- `executeRefineMode()` - 기존 Spec 개선
+- `executeReviewMode()` - Spec 검토 + 자동 수정
+- `reviewSpec()` - 품질 점수 계산 및 이슈 발견
+- `autoFix()` - Critical 이슈 자동 수정
+- `checkSections()` - 필수 섹션 확인
+- `calculateStats()` - 통계 계산 (라인 수, 모델 수, API 수, 페이지 수)
+
+**템플릿 시스템**:
+```
+lib/agents/spec-writer/templates/
+├── basic.md          # 기본 앱 템플릿
+├── financial.md      # 금융 앱 템플릿
+├── ecommerce.md      # E-commerce 템플릿 (예정)
+└── social.md         # 소셜 앱 템플릿 (예정)
+```
+
+**CLI 사용법**:
+```bash
+# 새 spec 작성 (템플릿 사용)
+npm run spec:new -- --idea "Personal finance tracker" --template financial
+
+# 기존 spec 개선
+npm run spec:refine specs/my-app.md --output specs/my-app-v2.md
+
+# Spec 검토
+npm run spec:review specs/my-app.md
+
+# Spec 검토 + 자동 수정
+npm run spec:review specs/my-app.md --fix
+
+# 도움말
+npm run spec:help
+```
+
+**출력 예시**:
+```
+✅ Spec Writer completed successfully!
+
+Spec file: specs/personal-finance-tracker.md
+
+📊 Review Results:
+  - Consistency: 95/100
+  - Completeness: 88/100
+  - Feasibility: 92/100
+  - Overall: 92/100
+
+⚠️  Found 3 issues:
+  🔴 Missing timestamps on Budget model
+  ⚠️ API endpoint naming inconsistency
+  ℹ️ Consider adding pagination to GET /api/transactions
+
+💡 5 suggestions available
+
+📈 Stats:
+  - Total lines: 847
+  - Data models: 6
+  - API endpoints: 24
+  - Pages: 8
+```
+
+**타입 에러 수정**:
+- ✅ `lib/agents/spec-writer/types.ts` import 경로 수정
+  - 잘못된 경로 → `'../spec-parser/types'`
+- ✅ `lib/agents/spec-writer/index.ts` 미사용 import 제거
+  - `Issue`, `Suggestion` 제거 (types.ts에서만 export)
+
+**문서 업데이트**:
+- ✅ `package.json` - 4개 script 추가 (spec:new, spec:refine, spec:review, spec:help)
+- ✅ `README.md` - Spec Writer Agent 소개 추가 (Agent #0)
+- ✅ `IMPLEMENTATION_GUIDE.md` - Step 0 섹션 추가
+- ✅ `IMPLEMENTATION_LOG.md` - 이 작업 기록 추가
+
+**성과**:
+- ✅ SDD System의 진입점 자동화
+- ✅ Spec 작성 시간 단축 (수작업 2-3시간 → AI 대화 15-20분)
+- ✅ Spec 품질 향상 (자동 검증 + 개선 제안)
+- ✅ 사용자 친화적 CLI 제공
+- ✅ 재사용 가능한 템플릿 시스템
+
+**Agent 총 개수**: 10개 (Spec Writer 추가로 0~9)
+- #0: Spec Writer (NEW ✅)
+- #1: Spec Parser ✅
+- #2: Architecture ✅
+- #3: Database ✅
+- #4: Frontend ✅
+- #5: Backend ✅
+- #6: Config ✅
+- #7: Deployment ⏳
+- #8: Testing ⏳
+- #9: Fix ✅
+
+---
+
+### 2025-12-20 오후
+
+**프로젝트 구조 최적화 및 Fix Agent 표준화**
+
+#### ✅ Agent 폴더 구조 재정비
+
+**배경**:
+- spec-parser가 `lib/agents/infra/` 하위에 위치하여 일관성 부족
+- fix agent가 `lib/agents/backend/` 하위에 있었으나 backend 전용이 아님
+- 불필요한 폴더 계층 제거 필요
+
+**변경 사항**:
+1. **spec-parser 이동**: `lib/agents/infra/spec-parser/` → `lib/agents/spec-parser/`
+   - import 경로 업데이트: `'../../base-agent'` → `'../base-agent'`
+   - spec-writer types.ts 수정: `'../infra/spec-parser/types'` → `'../spec-parser/types'`
+   - cli.ts import 수정
+   - 빈 infra/ 폴더 삭제
+
+2. **fix agent 이동**: `lib/agents/backend/fix/` → `lib/agents/fix/`
+   - import 경로 업데이트
+   - cli.ts import 수정: `'./lib/agents/backend/fix'` → `'./lib/agents/fix'`
+
+**결과**:
+- ✅ 모든 agent가 `lib/agents/agent-name/` 형태로 통일
+- ✅ 더 간단하고 일관된 import 경로
+- ✅ 불필요한 폴더 계층 제거
+
+#### ✅ Fix Agent 표준화
+
+**배경**:
+- Fix Agent가 다른 agent들과 달리 AGENT.md를 사용하지 않음
+- 60+ 줄의 instructions가 코드에 하드코딩됨
+- 표준 BaseAgent 패턴 미적용
+
+**구현 내용**:
+1. **AGENT.md 생성**: `lib/agents/fix/AGENT.md` (620+ 줄)
+   - Role 정의
+   - 상세한 수정 규칙
+   - 일반적인 에러 유형별 수정 방법
+   - 코드 스타일 보존 규칙
+   - 출력 포맷 명시
+   - 품질 기준
+
+2. **index.ts 리팩토링**:
+   - `loadInstructions(__dirname)` 추가
+   - `callClaude()` 메서드 사용 (BaseAgent 표준 패턴)
+   - ES Module 지원 추가 (`fileURLToPath`, `dirname`)
+   - private instructions 멤버 변수 추가
+   - 하드코딩된 60+ 줄 프롬프트 제거
+
+**개선 효과**:
+- ✅ 모든 AI agent가 동일한 패턴 사용 (일관성)
+- ✅ AGENT.md로 instructions 관리 (유지보수성)
+- ✅ 코드가 더 간결하고 읽기 쉬움
+- ✅ Fix 품질 향상 (더 상세한 instructions)
+
+#### ✅ 문서 구조 개선
+
+**배경**:
+- Root 폴더에 4개 MD 파일 산재 (AGENT_ARCHITECTURE.md, IMPLEMENTATION_GUIDE.md, IMPLEMENTATION_LOG.md)
+- README.md 제외한 나머지 문서 집중화 필요
+- 프로젝트 scalability 고려
+
+**변경 사항**:
+1. **docs/ 폴더 생성**:
+   - `AGENT_ARCHITECTURE.md` → `docs/AGENT_ARCHITECTURE.md`
+   - `IMPLEMENTATION_GUIDE.md` → `docs/IMPLEMENTATION_GUIDE.md`
+   - `IMPLEMENTATION_LOG.md` → `docs/IMPLEMENTATION_LOG.md`
+   - README.md는 root에 유지
+
+2. **문서 내 참조 업데이트**:
+   - README.md의 문서 링크 수정
+   - IMPLEMENTATION_GUIDE.md의 상대 링크 수정
+   - IMPLEMENTATION_LOG.md의 상대 링크 수정
+
+**결과**:
+- ✅ 깔끔한 root 폴더 (README.md만 유지)
+- ✅ 문서 집중화 (docs/ 폴더)
+- ✅ 업계 표준 구조 준수
+
+#### ✅ 문서 내용 업데이트
+
+**AGENT_ARCHITECTURE.md 업데이트**:
+- Agent 0 (Spec Writer) 추가
+- Phase 번호 재조정 (Phase 0, 1, 2, ...)
+- Agent 7/8 라벨 수정 (Deployment/Testing 순서)
+- Fix Agent 위치 업데이트 (lib/agents/fix/)
+- Fix Agent 파일 목록 추가 (index.ts, types.ts, AGENT.md)
+- Fix Agent 구현 상태 표시 (✅)
+- 구현 현황 테이블 업데이트 (8개 완료, 2개 예정)
+- 총 Agent 수 수정 (9개 → 10개)
+- 버전 업데이트 (v2.0 → v3.0)
+- 작성일 업데이트 (2025-12-20)
+
+**IMPLEMENTATION_LOG.md 업데이트**:
+- Agent 번호 정정 (2025-12-20 엔트리)
+- 이 작업 내용 추가
+
+**성과**:
+- ✅ 일관된 agent 구조 달성
+- ✅ 표준화된 agent 패턴 적용 (모든 AI agent가 AGENT.md 사용)
+- ✅ 깔끔한 프로젝트 구조
+- ✅ 최신 정보 반영된 문서
+
+**영향받은 파일**:
+- 이동: 6개 (spec-parser/*, fix/*, 3개 docs)
+- 수정: 10+ 개 (cli.ts, 여러 import 경로, 모든 문서)
+
+---
 
 ### 2025-12-16
 

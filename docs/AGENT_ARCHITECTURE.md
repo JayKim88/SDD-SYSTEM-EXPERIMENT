@@ -76,7 +76,67 @@ export abstract class BaseAgent<TInput, TOutput> {
 
 ## Agent 상세 명세
 
-### Phase 0-1: 입력 처리 (2개)
+### Phase 0: Spec 작성 (선택적)
+
+#### Agent 0: Spec Writer Agent ✅
+
+**역할**: AI와 대화하며 애플리케이션 명세서 작성/개선/검토
+
+**Input**:
+```typescript
+interface SpecWriterInput {
+  mode: 'new' | 'refine' | 'review';
+  idea?: string;                    // 새 spec 작성 시
+  templateType?: TemplateType;      // 템플릿 타입
+  existingSpecPath?: string;        // 기존 spec 경로
+  outputPath?: string;
+  autoFix?: boolean;                // 검토 모드 자동 수정
+}
+```
+
+**Output**:
+```typescript
+interface SpecWriterOutput {
+  specPath: string;
+  reviewResults: {
+    consistency: number;      // 0-100
+    completeness: number;     // 0-100
+    feasibility: number;      // 0-100
+    overall: number;          // 0-100
+    issues: Issue[];
+    suggestions: Suggestion[];
+  };
+  stats: {
+    totalLines: number;
+    dataModelsCount: number;
+    apiEndpointsCount: number;
+    pagesCount: number;
+  };
+}
+```
+
+**동작**:
+1. **NEW 모드**: 아이디어 → 완전한 Spec 생성
+2. **REFINE 모드**: 기존 Spec 개선 (누락 섹션, 불일치 수정)
+3. **REVIEW 모드**: Spec 검토 및 자동 수정
+
+**파일**:
+- `lib/agents/spec-writer/index.ts`
+- `lib/agents/spec-writer/types.ts`
+- `lib/agents/spec-writer/AGENT.md`
+- `lib/agents/spec-writer/templates/` (템플릿들)
+- `spec-writer-cli.ts` (독립 CLI)
+
+**CLI 사용**:
+```bash
+npm run spec:new -- --idea "Personal finance tracker" --template financial
+npm run spec:refine specs/my-app.md
+npm run spec:review specs/my-app.md --fix
+```
+
+---
+
+### Phase 1: 입력 처리
 
 #### Agent 1: Spec Parser Agent ✅
 
@@ -115,6 +175,8 @@ interface SpecParserOutput {
 - `lib/agents/spec-parser/AGENT.md`
 
 ---
+
+### Phase 2: 아키텍처 설계
 
 #### Agent 2: Architecture Agent ✅
 
@@ -156,6 +218,8 @@ interface FileSpec {
 ---
 
 ### Phase 2-5: 코드 생성 (4개)
+
+### Phase 3: 코드 생성
 
 #### Agent 3: Database Agent ✅
 
@@ -339,7 +403,7 @@ interface ConfigOutput {
 
 ### Phase 6-7: 배포 & 품질 (3개)
 
-#### Agent 7: Deployment Agent ⏳
+#### Agent 7: Deployment Agent ✅
 
 **역할**: Docker, CI/CD 설정 생성 (템플릿 기반)
 
@@ -385,13 +449,13 @@ interface DeploymentOutput {
 
 ---
 
-#### Agent 8: Testing Agent ⏳
+#### Agent 8: Testing Agent ✅
 
 **역할**: 테스트 파일 자동 생성
 
 **Input**:
 ```typescript
-interface TestingInput {
+interface TestingInput{
   parsedSpec: SpecParserOutput;
   architecture: ArchitectureOutput;
   frontend: FrontendOutput;
@@ -435,7 +499,9 @@ interface TestingOutput {
 
 ---
 
-#### Agent 9: Fix Agent ⏳
+### Phase 4: 품질 보증
+
+#### Agent 9: Fix Agent ✅
 
 **역할**: 빌드 에러 자동 수정
 
@@ -482,14 +548,16 @@ npm run generate specs/my-app.md --fix
 npm run fix output/my-app
 ```
 
+**파일**:
+- `lib/agents/fix/index.ts`
+- `lib/agents/fix/types.ts`
+- `lib/agents/fix/AGENT.md`
+
 **특징**:
 - ⭐⭐⭐⭐ 매우 높은 가치 (자동 수정)
-- ⚠️ 복잡한 구현 (에러 파싱 & 컨텍스트 전달)
+- ✅ TypeScript + ESLint 에러 자동 수정
 - 🔄 반복 수정 지원 (최대 3회 재시도)
-
-**구현 상태**: 미구현
-**구현 난이도**: 높음
-**구현 시간**: ~4-6시간
+- 📝 AGENT.md 기반 일관된 수정 품질
 
 ---
 
@@ -534,28 +602,29 @@ Complete Next.js App
 
 ## 구현 현황
 
-### ✅ 구현 완료 (6개)
+### ✅ 구현 완료 (8개)
 
-| Phase | Agent | 상태 | 생성 파일 수 | Claude API |
-|-------|-------|------|--------------|------------|
-| 0 | Spec Parser | ✅ | 1 JSON | ✅ |
-| 1 | Architecture | ✅ | 1 JSON | ✅ |
-| 2 | Database | ✅ | ~4-12 files | ✅ |
-| 3 | Frontend | ✅ | ~20-40 files | ✅ |
-| 4 | Backend | ✅ | ~10-20 files | ✅ |
-| 5 | Config | ✅ | 9 files | ❌ (템플릿) |
+| Agent | 이름 | 상태 | 생성 파일 수 | Claude API |
+|-------|------|------|--------------|------------|
+| 0 | Spec Writer | ✅ | 1 MD | ✅ |
+| 1 | Spec Parser | ✅ | 1 JSON | ✅ |
+| 2 | Architecture | ✅ | 1 JSON | ✅ |
+| 3 | Database | ✅ | ~4-12 files | ✅ |
+| 4 | Frontend | ✅ | ~20-40 files | ✅ |
+| 5 | Backend | ✅ | ~10-20 files | ✅ |
+| 6 | Config | ✅ | 9 files | ❌ (템플릿) |
+| 9 | Fix | ✅ | 수정된 파일들 | ✅ |
 
-**총 6개 Agent 완료 → 완전히 작동하는 Next.js 앱 생성 가능**
+**총 8개 Agent 완료 → 완전히 작동하는 Next.js 앱 생성 가능**
 
 ---
 
-### ⏳ 구현 예정 (3개)
+### ⏳ 구현 예정 (2개)
 
-| Phase | Agent | 우선순위 | 난이도 | 예상 시간 | Claude API |
-|-------|-------|----------|--------|-----------|------------|
-| 6 | Deployment | ⭐⭐⭐ 높음 | 낮음 | ~1시간 | ❌ (템플릿) |
-| 7 | Testing | ⭐⭐ 중간 | 중간 | ~2-3시간 | ✅ |
-| 8 | Fix | ⭐⭐⭐⭐ 매우 높음 | 높음 | ~4-6시간 | ✅ |
+| Agent | 이름 | 우선순위 | 난이도 | 예상 시간 | Claude API |
+|-------|------|----------|--------|-----------|------------|
+| 7 | Deployment | ⭐⭐⭐ 높음 | 낮음 | ~1시간 | ❌ (템플릿) |
+| 8 | Testing | ⭐⭐ 중간 | 중간 | ~2-3시간 | ✅ |
 
 ---
 
@@ -612,7 +681,7 @@ const fixed = await fixAgent.execute({
 
 ## 설계 결정 사항
 
-### 왜 9개 Agent인가?
+### 왜 10개 Agent인가?
 
 #### ❌ 제거된 Agent들 (19개)
 
@@ -779,20 +848,21 @@ Config Agent    → 9 files
 
 ## 결론
 
-### 최종 Agent 구성 (9개)
+### 최종 Agent 구성 (10개)
 
-**✅ 구현 완료 (6개):**
+**✅ 구현 완료 (8개):**
+0. Spec Writer Agent
 1. Spec Parser Agent
 2. Architecture Agent
 3. Database Agent
 4. Frontend Agent
 5. Backend Agent
 6. Config Agent
+9. Fix Agent
 
-**⏳ 구현 예정 (3개):**
+**⏳ 구현 예정 (2개):**
 7. Deployment Agent (우선순위: 높음)
 8. Testing Agent (우선순위: 중간)
-9. Fix Agent (우선순위: 매우 높음)
 
 **❌ 불필요 (19개):**
 - Input Validation, Requirement Analyzer, Tech Stack Selector
@@ -805,13 +875,13 @@ Config Agent    → 9 files
 
 ### 왜 이 구성인가?
 
-1. **MVP 완성**: 6개 Agent로 완전히 작동하는 Next.js 앱 생성 가능
+1. **MVP 완성**: 8개 Agent로 완전히 작동하는 Next.js 앱 생성 가능
 2. **실용성**: 각 Agent가 명확한 가치 제공
 3. **유지보수성**: 적절한 복잡도 유지
-4. **확장성**: 필요 시 3개 Agent 추가 가능
+4. **확장성**: 필요 시 2개 Agent 추가 가능
 
 ---
 
-**작성일**: 2025-12-17
-**버전**: 2.0
+**작성일**: 2025-12-20 (최종 업데이트)
+**버전**: 3.0
 **작성자**: Claude Sonnet 4.5

@@ -145,6 +145,165 @@ agents/my-agent/
 
 ---
 
+## Step 0: Spec Writer Agent (선택적)
+
+### 0. Spec Writer Agent 구현
+
+Spec을 작성하는 데 도움을 주는 AI 에이전트입니다. 사용자와 대화하며 애플리케이션 명세서를 작성, 개선, 검토합니다.
+
+#### Step 0.1: 타입 정의
+
+```typescript
+// lib/agents/spec-writer/types.ts
+import { SpecParserOutput } from '../spec-parser/types';
+
+export type SpecWriterMode = 'new' | 'refine' | 'review';
+export type TemplateType = 'basic' | 'dashboard' | 'ecommerce' | 'financial' | 'social';
+
+export interface SpecWriterInput {
+  mode: SpecWriterMode;
+
+  // 새 spec 작성 시
+  idea?: string; // 사용자 아이디어
+  templateType?: TemplateType; // 템플릿 타입
+
+  // 기존 spec 개선/검토 시
+  existingSpecPath?: string;
+
+  // 옵션
+  interactive?: boolean;
+  outputPath?: string;
+  autoFix?: boolean; // 검토 모드에서 자동 수정
+}
+
+export interface SpecWriterOutput {
+  specPath: string;
+  mode: SpecWriterMode;
+  parsedSpec?: SpecParserOutput;
+  sections: {
+    projectInfo: boolean;
+    features: boolean;
+    dataModels: boolean;
+    apiEndpoints: boolean;
+    pages: boolean;
+    techStack: boolean;
+    seedData: boolean;
+  };
+  reviewResults: ReviewResults;
+  stats: {
+    totalLines: number;
+    dataModelsCount: number;
+    apiEndpointsCount: number;
+    pagesCount: number;
+  };
+}
+
+export interface ReviewResults {
+  consistency: number;    // 0-100
+  completeness: number;   // 0-100
+  feasibility: number;    // 0-100
+  overall: number;        // 0-100
+  issues: Issue[];
+  suggestions: Suggestion[];
+}
+```
+
+#### Step 0.2: Instructions 작성
+
+```markdown
+<!-- lib/agents/spec-writer/AGENT.md -->
+
+# Spec Writer Agent
+
+You are an expert specification writer for web applications.
+Your role is to help users create, refine, and review application specifications.
+
+## Modes
+
+### 1. NEW Mode
+Create a new specification from scratch based on user's idea.
+
+### 2. REFINE Mode
+Improve an existing specification by filling gaps and enhancing quality.
+
+### 3. REVIEW Mode
+Review a specification and provide quality scores and suggestions.
+
+## Spec Format
+
+All specifications should follow this structure:
+
+1. Project Information (name, purpose, target users)
+2. Core Features (list of main features)
+3. Data Models (TypeScript interfaces)
+4. API Endpoints (RESTful endpoints)
+5. Page Structure (UI/UX design)
+6. Tech Stack (recommended technologies)
+7. Seed Data (initial data examples)
+
+## Review Criteria
+
+- **Consistency**: Are data models consistent with API endpoints?
+- **Completeness**: Are all necessary sections present?
+- **Feasibility**: Is the spec realistic and implementable?
+```
+
+#### Step 0.3: Agent 구현
+
+```typescript
+// lib/agents/spec-writer/index.ts
+import { BaseAgent } from '../base-agent';
+import { SpecWriterInput, SpecWriterOutput } from './types';
+
+export class SpecWriterAgent extends BaseAgent<SpecWriterInput, SpecWriterOutput> {
+  async execute(input: SpecWriterInput): Promise<SpecWriterOutput> {
+    const instructions = await this.loadInstructions(__dirname);
+
+    switch (input.mode) {
+      case 'new':
+        return await this.executeNewMode(input, instructions);
+      case 'refine':
+        return await this.executeRefineMode(input, instructions);
+      case 'review':
+        return await this.executeReviewMode(input, instructions);
+    }
+  }
+
+  private async reviewSpec(specPath: string, instructions: string): Promise<ReviewResults> {
+    const specContent = await fs.readFile(specPath, 'utf-8');
+    const prompt = `Review this specification:\n\n${specContent}`;
+    const response = await this.callClaude(prompt, instructions);
+    return this.extractJSON<ReviewResults>(response);
+  }
+}
+```
+
+#### Step 0.4: CLI 통합
+
+```bash
+# package.json scripts
+{
+  "spec:new": "tsx spec-writer-cli.ts new",
+  "spec:refine": "tsx spec-writer-cli.ts refine",
+  "spec:review": "tsx spec-writer-cli.ts review",
+  "spec:help": "tsx spec-writer-cli.ts help"
+}
+```
+
+**사용법**:
+```bash
+# 새 spec 작성
+npm run spec:new -- --idea "Personal finance tracker" --template financial
+
+# 기존 spec 개선
+npm run spec:refine specs/my-app.md
+
+# Spec 검토
+npm run spec:review specs/my-app.md
+```
+
+---
+
 ## Step 1: Core Agents 구현
 
 ### 1. Base Agent 구현
@@ -1381,7 +1540,12 @@ async execute(input) {
 
 ## 참고 자료
 
+### 프로젝트 문서
+- [README.md](../README.md) - 프로젝트 개요
 - [AGENT_ARCHITECTURE.md](./AGENT_ARCHITECTURE.md) - 전체 아키텍처
+- [IMPLEMENTATION_LOG.md](./IMPLEMENTATION_LOG.md) - 구현 기록
+
+### 외부 문서
 - [Claude API Docs](https://docs.anthropic.com/) - Claude API
 - [Next.js 14 Docs](https://nextjs.org/docs) - Next.js
 - [Prisma Docs](https://www.prisma.io/docs) - Prisma ORM
