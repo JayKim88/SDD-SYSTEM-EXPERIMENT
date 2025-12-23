@@ -1549,3 +1549,385 @@ async execute(input) {
 - [Claude API Docs](https://docs.anthropic.com/) - Claude API
 - [Next.js 14 Docs](https://nextjs.org/docs) - Next.js
 - [Prisma Docs](https://www.prisma.io/docs) - Prisma ORM
+
+---
+
+## v2.0: Skills 기반 사용 가이드 (2025-12-23)
+
+### Skills 방식 vs API 방식
+
+**언제 Skills를 사용할까?**
+
+✅ **Skills 방식 (Claude Code)**:
+- 개발 및 테스트 단계
+- 빠른 피드백이 필요할 때
+- 무료로 사용하고 싶을 때
+- 대화형으로 수정하고 싶을 때
+
+✅ **API 방식 (CLI)**:
+- CI/CD 파이프라인에서
+- 완전 자동화가 필요할 때
+- 배치 처리가 필요할 때
+
+---
+
+### Skills 사용법
+
+#### 1. 전체 앱 생성
+
+```bash
+# Claude Code에서 실행
+sdd-generate specs/my-app.md
+```
+
+**내부 프로세스**:
+1. `sdd-parse` - Spec 파싱
+2. `sdd-architecture` - 구조 설계
+3. `sdd-database` - Prisma 스키마
+4. `sdd-frontend` - React 컴포넌트
+5. `sdd-backend` - API 라우트
+6. `sdd-config` - 설정 파일
+7. `sdd-testing` - 테스트 파일
+8. `sdd-deployment` - Docker 설정
+9. `sdd-fix` - 에러 수정
+
+#### 2. 개별 Skill 실행
+
+**Spec 파싱만**:
+```bash
+sdd-parse specs/my-app.md
+# Output: .temp/parsed-spec.json
+```
+
+**Architecture 설계만**:
+```bash
+sdd-architecture
+# Input: .temp/parsed-spec.json
+# Output: .temp/architecture.json
+```
+
+**Database만 생성**:
+```bash
+sdd-database
+# Input: .temp/parsed-spec.json + architecture.json
+# Output: output/{project}/prisma/
+```
+
+#### 3. 대화형 수정
+
+Skills는 Claude Code에서 실행되므로 즉시 피드백 가능:
+
+```
+You: sdd-generate specs/blog.md
+
+Claude: [파싱 완료, 아키텍처 설계 중...]
+
+You: 대시보드에 차트 하나 더 추가해줘
+
+Claude: [차트 추가하여 재생성...]
+
+You: API 에러 처리 더 견고하게 해줘
+
+Claude: [에러 처리 개선...]
+```
+
+---
+
+### Skills 디렉토리 구조
+
+```
+.claude/skills/
+├── sdd-generate.md         # 메인 오케스트레이터
+│   └── 전체 파이프라인 실행
+│
+├── sdd-parse.md            # Phase 1
+│   ├── Input: specs/*.md
+│   └── Output: .temp/parsed-spec.json
+│
+├── sdd-architecture.md     # Phase 2
+│   ├── Input: .temp/parsed-spec.json
+│   └── Output: .temp/architecture.json
+│
+├── sdd-database.md         # Phase 3
+│   ├── Input: parsed-spec + architecture
+│   └── Output: output/{project}/prisma/
+│
+├── sdd-frontend.md         # Phase 4
+│   ├── Input: parsed-spec + architecture
+│   └── Output: output/{project}/src/components/
+│
+├── sdd-backend.md          # Phase 5
+│   ├── Input: parsed-spec + architecture + schema
+│   └── Output: output/{project}/src/app/api/
+│
+├── sdd-config.md           # Phase 6
+│   ├── Input: parsed-spec + architecture
+│   └── Output: package.json, tsconfig.json, etc.
+│
+├── sdd-testing.md          # Phase 7
+│   ├── Input: generated files
+│   └── Output: *.test.tsx, *.spec.ts
+│
+├── sdd-deployment.md       # Phase 8
+│   ├── Input: parsed-spec + architecture
+│   └── Output: Dockerfile, docker-compose.yml
+│
+└── sdd-fix.md              # Phase 9
+    ├── Input: generated project
+    └── Output: 수정된 파일들
+```
+
+---
+
+### Skill 작성 가이드
+
+Skills를 직접 추가하거나 수정하고 싶다면:
+
+#### Skill 파일 구조
+
+```markdown
+# Skill Name - Brief Description
+
+**Description**: What this skill does
+
+**Usage**:
+\```bash
+skill-name <args>
+\```
+
+## Instructions
+
+When this skill is invoked:
+
+1. **Read Input**:
+   - Input file paths
+   - Expected format
+
+2. **Process**:
+   - Step-by-step logic
+   - Key operations
+
+3. **Generate Output**:
+   - Output file paths
+   - Format specifications
+
+4. **Validation**:
+   - Error checking
+   - Success criteria
+
+## Key Principles
+
+- Best practice 1
+- Best practice 2
+- Error handling strategy
+
+## Examples
+
+### Example 1: Basic Usage
+\```bash
+skill-name input.md
+\```
+
+### Example 2: With Options
+\```bash
+skill-name input.md --output custom/path
+\```
+
+## Output Format
+
+Describe expected output...
+```
+
+#### 새 Skill 추가하기
+
+1. **파일 생성**:
+```bash
+touch .claude/skills/my-custom-skill.md
+```
+
+2. **Skill 정의 작성**:
+   - Description: 무엇을 하는지
+   - Instructions: 어떻게 하는지
+   - Examples: 사용 예시
+
+3. **오케스트레이터에 통합** (선택):
+```markdown
+# .claude/skills/sdd-generate.md
+
+10. **Run Phase 10 - My Custom Skill**:
+    - Use the `my-custom-skill` skill
+    - Input: ...
+    - Output: ...
+```
+
+---
+
+### Skills 디버깅
+
+#### 중간 파일 확인
+
+```bash
+# 파싱 결과 확인
+cat .temp/parsed-spec.json | jq
+
+# 아키텍처 확인
+cat .temp/architecture.json | jq
+```
+
+#### 생성된 파일 검증
+
+```bash
+# 생성된 프로젝트로 이동
+cd output/my-app
+
+# 의존성 설치
+npm install
+
+# 타입 체크
+npm run type-check
+
+# 빌드
+npm run build
+```
+
+#### 에러 발생 시
+
+1. **중간 파일 확인**: `.temp/` 디렉토리의 JSON 파일 검증
+2. **개별 Skill 재실행**: 문제가 있는 Phase만 다시 실행
+3. **Claude에게 피드백**: "이 부분 수정해줘"
+
+---
+
+### 성능 최적화
+
+#### 병렬 실행 (고급)
+
+Phase 3-8은 독립적이므로 병렬 가능:
+
+```bash
+# 여러 Claude Code 세션에서 동시 실행
+# Session 1: sdd-database
+# Session 2: sdd-frontend  
+# Session 3: sdd-backend
+# Session 4: sdd-config
+```
+
+단, Frontend/Backend는 Database 스키마 참조하므로 주의.
+
+#### 캐싱
+
+중간 결과 재사용:
+```bash
+# 이미 파싱된 spec 재사용
+# .temp/parsed-spec.json이 있으면 Phase 1 스킵
+
+# 이미 설계된 architecture 재사용
+# .temp/architecture.json이 있으면 Phase 2 스킵
+```
+
+---
+
+### 문제 해결
+
+#### 문제: Skill이 인식 안 됨
+
+**원인**: Skills 파일이 잘못된 위치
+```bash
+# 올바른 위치 확인
+ls -la .claude/skills/
+
+# 없다면 생성
+mkdir -p .claude/skills
+```
+
+#### 문제: 중간 파일이 없음
+
+**원인**: 이전 Phase를 실행하지 않음
+```bash
+# Phase 순서대로 실행 필요
+sdd-parse specs/my-app.md      # 먼저
+sdd-architecture                 # 그 다음
+sdd-database                     # 마지막
+```
+
+#### 문제: 생성된 파일이 비어있음
+
+**원인**: Skill 프롬프트 개선 필요
+- Skill 파일 (.claude/skills/*.md) 열기
+- Instructions 섹션 확인 및 수정
+- 더 구체적인 지시사항 추가
+
+---
+
+### 비교: CLI vs Skills
+
+#### CLI 방식 (기존)
+
+```bash
+# 한 번에 실행
+npm run generate specs/my-app.md
+
+# 장점:
+# - 완전 자동
+# - CI/CD 통합 가능
+# - 빠름 (4-5분)
+
+# 단점:
+# - API 크레딧 필요
+# - 피드백 불가
+# - 수정 어려움
+```
+
+#### Skills 방식 (신규)
+
+```bash
+# Claude Code에서 실행
+sdd-generate specs/my-app.md
+
+# 장점:
+# - 무료 (Max 플랜)
+# - 대화형 피드백
+# - 즉시 수정 가능
+# - Sonnet 4.5 사용
+
+# 단점:
+# - Claude Code 필요
+# - 반자동
+# - 약간 느림 (7-10분)
+```
+
+---
+
+### 다음 단계: 하이브리드 시스템 (v3.0)
+
+**목표**: 두 방식의 장점 결합
+
+```typescript
+// 환경 변수로 전환
+LLM_PROVIDER=claude-code  # 개발 시
+LLM_PROVIDER=anthropic    # 프로덕션 시
+
+// lib/agents/base-agent.ts
+interface LLMProvider {
+  generate(prompt: string): Promise<string>;
+}
+
+class AnthropicProvider implements LLMProvider {
+  async generate(prompt: string) {
+    return await this.anthropic.messages.create({...});
+  }
+}
+
+class ClaudeCodeProvider implements LLMProvider {
+  async generate(prompt: string) {
+    // Claude Code Skills 호출 로직
+  }
+}
+```
+
+---
+
+**Version**: 2.0.0 (Skills 추가)
+**Last Updated**: 2025-12-23
+**Status**: Skills 방식 추가, 테스트 진행 중
+

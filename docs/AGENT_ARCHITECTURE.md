@@ -885,3 +885,198 @@ Config Agent    → 9 files
 **작성일**: 2025-12-20 (최종 업데이트)
 **버전**: 3.0
 **작성자**: Claude Sonnet 4.5
+
+---
+
+## v2.0: Skills 기반 아키텍처 (2025-12-23)
+
+### 새로운 실행 방식
+
+**기존 (v1.0)**: API 기반 자동화
+```typescript
+// CLI로 실행
+npm run generate specs/my-app.md
+
+// 내부: Anthropic API 직접 호출
+const response = await anthropic.messages.create({
+  model: 'claude-sonnet-4-20250514',
+  // ... API 크레딧 차감
+});
+```
+
+**신규 (v2.0)**: Claude Code Skills 기반
+```bash
+# Claude Code에서 실행
+sdd-generate specs/my-app.md
+
+# 내부: Claude Code (Max 플랜 사용)
+# - API 크레딧 불필요
+# - 대화형 피드백 가능
+# - Sonnet 4.5 사용
+```
+
+---
+
+### Skills 아키텍처
+
+**10개 Claude Code Skills**:
+
+```
+.claude/skills/
+├── sdd-generate.md         # 오케스트레이터
+├── sdd-parse.md            # Spec Parser
+├── sdd-architecture.md     # Architecture Designer
+├── sdd-database.md         # Database Generator
+├── sdd-frontend.md         # Frontend Generator
+├── sdd-backend.md          # Backend Generator
+├── sdd-config.md           # Config Generator
+├── sdd-testing.md          # Testing Generator
+├── sdd-deployment.md       # Deployment Generator
+└── sdd-fix.md              # Error Fixer
+```
+
+**각 Skill 구조**:
+```markdown
+# Skill Name - Description
+
+**Description**: Brief summary
+
+**Usage**:
+\```bash
+skill-name <args>
+\```
+
+## Instructions
+Detailed instructions from AGENT.md...
+
+### Task
+1. Read input files
+2. Process data
+3. Generate output
+4. Save results
+
+### Key Principles
+- Best practices
+- Error handling
+- Type safety
+```
+
+---
+
+### 실행 흐름 비교
+
+#### API 방식 (v1.0)
+
+```
+User → CLI → Orchestrator → Agent 1 → Claude API → Result
+                           → Agent 2 → Claude API → Result
+                           → Agent 3 → Claude API → Result
+                           → ...
+```
+
+**특징**:
+- ✅ 완전 자동화
+- ✅ 빠름 (4-5분)
+- ✅ CI/CD 통합 가능
+- ❌ API 크레딧 필요 (~$0.38/앱)
+- ❌ 피드백 불가
+- ❌ Sonnet 4.0
+
+#### Skills 방식 (v2.0)
+
+```
+User → Claude Code → Skill 1 → Claude (Max 플랜) → Result
+                   → Skill 2 → Claude (Max 플랜) → Result
+                   → Skill 3 → Claude (Max 플랜) → Result
+                   → ...
+                   ↔ 대화형 피드백 가능
+```
+
+**특징**:
+- ✅ 무료 (Max 플랜)
+- ✅ 대화형 개선
+- ✅ Sonnet 4.5
+- ✅ 즉시 수정 가능
+- ❌ 반자동 (Claude Code 필요)
+- ❌ 느림 (7-10분)
+- ❌ CI/CD 어려움
+
+---
+
+### 하이브리드 전략 (v3.0 예정)
+
+**개발 단계**: Skills 방식
+- 무료, 대화형, 빠른 피드백
+- 품질 개선에 유리
+
+**프로덕션/CI**: API 방식
+- 자동화, 파이프라인 통합
+- 안정적인 배포
+
+**구현 계획**:
+```typescript
+// lib/agents/base-agent.ts
+abstract class BaseAgent<TInput, TOutput> {
+  protected llmProvider: LLMProvider;
+  
+  constructor(provider: 'anthropic' | 'claude-code' | 'ollama') {
+    this.llmProvider = LLMProviderFactory.create(provider);
+  }
+  
+  protected async generate(prompt: string): Promise<string> {
+    return this.llmProvider.generate(prompt);
+  }
+}
+```
+
+---
+
+### Skills 데이터 흐름
+
+```
+specs/my-app.md
+      ↓
+[sdd-parse]
+      ↓
+.temp/parsed-spec.json
+      ↓
+[sdd-architecture]
+      ↓
+.temp/architecture.json
+      ↓
+[sdd-database] ──┐
+[sdd-frontend] ──┤
+[sdd-backend] ───┼→ output/my-app/
+[sdd-config] ────┤
+[sdd-testing] ───┤
+[sdd-deployment]─┘
+      ↓
+[sdd-fix]
+      ↓
+output/my-app/ (완성)
+```
+
+---
+
+### 구현 현황 업데이트
+
+| Agent | API 방식 (v1.0) | Skills 방식 (v2.0) |
+|-------|----------------|-------------------|
+| 0. Spec Writer | ✅ | ✅ |
+| 1. Spec Parser | ✅ | ✅ sdd-parse.md |
+| 2. Architecture | ✅ | ✅ sdd-architecture.md |
+| 3. Database | ✅ | ✅ sdd-database.md |
+| 4. Frontend | ✅ | ✅ sdd-frontend.md |
+| 5. Backend | ✅ | ✅ sdd-backend.md |
+| 6. Config | ✅ | ✅ sdd-config.md |
+| 7. Deployment | ✅ | ✅ sdd-deployment.md |
+| 8. Testing | ✅ | ✅ sdd-testing.md |
+| 9. Fix | ✅ | ✅ sdd-fix.md |
+
+**결론**: 모든 Agent가 양쪽 방식으로 사용 가능 ✅
+
+---
+
+**최종 업데이트**: 2025-12-23
+**버전**: 4.0 (Skills 추가)
+**작성자**: Claude Sonnet 4.5
