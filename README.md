@@ -46,13 +46,13 @@ Spec (명세서) → 10개 AI Agents → 완전한 Next.js 앱
 
 | 방식 | 사용 시나리오 | 특징 |
 |------|--------------|------|
-| **방법 1 (v2.0)** | Claude Code로 대화형 개발 | 🌟 AI와 대화하며 개발, 실시간 피드백 |
+| **방법 1 (v3.0)** | Claude Code로 대화형 개발 | 🌟 Interactive Mode, 병렬 실행, Checkpoint |
 | **방법 2 (v1.0)** | CLI로 자동 생성 | ⚡ 빠른 자동화, CI/CD 통합 |
 | **방법 3** | 수동으로 spec 작성 | ✍️ 정확한 spec 작성, 반복 생성 |
 
 ---
 
-### 방법 1: Claude Code Skills 사용 (v2.0, 권장) ⭐
+### 방법 1: Claude Code 사용 (v3.0, 권장) ⭐
 
 **Claude Code CLI**에서 AI와 대화하며 앱을 생성합니다.
 
@@ -69,8 +69,8 @@ echo "ANTHROPIC_API_KEY=your_api_key_here" > .env
 claude-code  # 또는 npx claude-code
 
 # 4. Claude와 대화
-You: /sdd-generate "Personal finance tracker"
-# AI가 대화형으로 spec 작성 → 앱 생성 → 테스트 → 수정 진행
+You: /generate specs/my-money-plan.md
+# Interactive mode로 각 Phase 완료 후 확인하며 진행
 
 # 5. 생성된 앱 실행
 cd output/personal-finance-tracker
@@ -78,11 +78,24 @@ npm install
 npm run dev
 ```
 
-**특징**:
-- 🤖 AI와 실시간 대화하며 개발
-- 🔄 즉시 피드백 및 수정
-- ✅ 에러 발견 시 자동 수정
-- 📊 10개 Skills가 순차 실행 (generate → parse → architecture → ... → fix)
+**v3.0 핵심 기능**:
+- 🎯 **Interactive Mode**: 각 Phase 완료 후 확인 (yes/no/modify/skip)
+- 💾 **Checkpoint System**: 자동 저장/복구 (.temp/checkpoint.json)
+- ⚡ **병렬 실행**: Phase 3-8 동시 실행 (59% 빠름, 4-5분)
+- 🔄 **순차 실행**: 안정적인 단계별 실행 (8-10분)
+- 🤖 **3-Layer 구조**: Command → Sub Agents → Skills
+
+**실행 모드**:
+```bash
+# Interactive + Sequential (기본, 첫 테스트 권장)
+/generate specs/my-app.md
+
+# Auto + Parallel (최고 속도, 프로덕션)
+/generate specs/my-app.md --auto --parallel
+
+# 중단 후 재개
+/generate specs/my-app.md --resume
+```
 
 > 자세한 사용법: [SDD_SYSTEM_ARCHITECTURE.md](./docs/SDD_SYSTEM_ARCHITECTURE.md)
 
@@ -159,7 +172,7 @@ echo "ANTHROPIC_API_KEY=your_api_key_here" > .env
 
 ```bash
 # 4. 앱 생성 (Claude Code 또는 CLI)
-claude-code  # → You: /sdd-generate specs/my-app.md
+claude-code  # → You: /generate specs/my-app.md
 # 또는
 npm run generate specs/my-app.md
 
@@ -484,9 +497,10 @@ sdd-system/                          # SDD 시스템 루트
 ├── tsconfig.json
 ├── README.md                       # 이 파일
 ├── docs/                           # 프로젝트 문서
-│   ├── AGENT_ARCHITECTURE.md      # Agent 상세 설계
+│   ├── SDD_SYSTEM_ARCHITECTURE.md # 전체 아키텍처 (v1.0~v3.0)
 │   ├── IMPLEMENTATION_GUIDE.md    # 구현 가이드
-│   └── IMPLEMENTATION_LOG.md      # 구현 기록
+│   ├── IMPLEMENTATION_LOG.md      # 구현 기록
+│   └── CLAUDE_CODE_LEARNING.md    # Claude Code 학습 가이드
 └── .env                            # API Keys
 ```
 
@@ -595,7 +609,6 @@ try {
 
 ### 아키텍처 문서
 - [SDD_SYSTEM_ARCHITECTURE.md](./docs/SDD_SYSTEM_ARCHITECTURE.md) - 전체 시스템 아키텍처 (v1.0 ~ v3.0)
-- [AGENT_ARCHITECTURE.md](./docs/AGENT_ARCHITECTURE.md) - Agent 상세 설계 (v1.0 API 구현)
 - [CLAUDE_CODE_LEARNING.md](./docs/CLAUDE_CODE_LEARNING.md) - Claude Code 학습 가이드
 
 ### 구현 가이드
@@ -686,24 +699,35 @@ try {
 
 ## 로드맵
 
-### v1.0 (현재) ✅ - 9개 Agent 완성!
+### v1.0 (2025-12-13) ✅ - 9개 Agent 완성
 - [x] 6개 Core Agent 구현
 - [x] Todo App 생성 성공
 - [x] Database Agent (Prisma 지원)
 - [x] Config Agent (ORM 자동 감지)
 - [x] Testing Agent (Vitest + Playwright)
 - [x] Deployment Agent (Docker + CI/CD)
-- [x] Fix Agent (TypeScript/ESLint 에러 자동 수정) 🎉
+- [x] Fix Agent (TypeScript/ESLint 에러 자동 수정)
 
-### v1.1 (다음) - 실행 제어 & 최적화
-- [ ] Interactive Mode (각 Agent 후 결과 확인)
-- [ ] Resume from Checkpoint (특정 Phase부터 재개)
-- [ ] Agent 선택 실행 (원하는 Agent만 실행)
+### v2.0 (2025-12-23) ✅ - Skills 기반 시스템
+- [x] Claude Code Skills 10개 구현
+- [x] 대화형 개발 지원
+- [x] Max 플랜 활용 (API 크레딧 불필요)
+
+### v3.0 (2025-12-25) ✅ - Command + Sub Agents + Skills
+- [x] Interactive Mode (각 Phase 후 확인)
+- [x] Checkpoint System (자동 저장/복구)
+- [x] 병렬 실행 (Phase 3-8, 59% 빠름)
+- [x] 9개 Sub Agents 구현
+- [x] 1개 Command 구현 (오케스트레이터)
+- [x] sdd- prefix 제거
+
+### v3.1 (다음) - 최적화 & 개선
+- [ ] Agent 선택 실행 (원하는 Phase만 실행)
 - [ ] Dry Run (실행 전 미리보기 & 비용 예측)
 - [ ] Incremental Generation (변경된 부분만 재생성)
+- [ ] 성능 모니터링 대시보드
 
-### v2.0 (미래) - 확장 & 생태계
-- [ ] Agent 병렬 실행 (실행 시간 단축)
+### v4.0 (미래) - 확장 & 생태계
 - [ ] Web UI (GUI 기반 Spec 작성 & 실시간 미리보기)
 - [ ] Agent Marketplace (커뮤니티 Agent 공유)
 - [ ] Multi-framework 지원 (Vue, Svelte, Angular)
@@ -730,6 +754,6 @@ Issue 및 PR 환영합니다!
 
 ---
 
-**작성일**: 2025-12-17
-**버전**: 2.0
+**작성일**: 2025-12-25
+**버전**: 3.0
 **작성자**: Claude Sonnet 4.5
