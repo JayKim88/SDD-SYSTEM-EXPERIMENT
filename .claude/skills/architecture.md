@@ -4,7 +4,7 @@
 
 **Usage**:
 ```bash
-sdd-architecture
+architecture
 ```
 
 ## Instructions
@@ -13,7 +13,7 @@ You are a specialized agent that designs the complete project architecture for a
 
 ### Task
 
-1. **Read** `.temp/parsed-spec.json` (created by sdd-parse)
+1. **Read** `.temp/parsed-spec.json` (created by parse)
 2. **Design** comprehensive project architecture including:
    - Project folder structure (Next.js 14 App Router)
    - File organization

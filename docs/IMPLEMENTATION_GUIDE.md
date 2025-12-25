@@ -1577,38 +1577,38 @@ async execute(input) {
 
 ```bash
 # Claude Code에서 실행
-sdd-generate specs/my-app.md
+generate specs/my-app.md
 ```
 
 **내부 프로세스**:
-1. `sdd-parse` - Spec 파싱
-2. `sdd-architecture` - 구조 설계
-3. `sdd-database` - Prisma 스키마
-4. `sdd-frontend` - React 컴포넌트
-5. `sdd-backend` - API 라우트
-6. `sdd-config` - 설정 파일
-7. `sdd-testing` - 테스트 파일
-8. `sdd-deployment` - Docker 설정
-9. `sdd-fix` - 에러 수정
+1. `parse` - Spec 파싱
+2. `architecture` - 구조 설계
+3. `database` - Prisma 스키마
+4. `frontend` - React 컴포넌트
+5. `backend` - API 라우트
+6. `config` - 설정 파일
+7. `testing` - 테스트 파일
+8. `deployment` - Docker 설정
+9. `fix` - 에러 수정
 
 #### 2. 개별 Skill 실행
 
 **Spec 파싱만**:
 ```bash
-sdd-parse specs/my-app.md
+parse specs/my-app.md
 # Output: .temp/parsed-spec.json
 ```
 
 **Architecture 설계만**:
 ```bash
-sdd-architecture
+architecture
 # Input: .temp/parsed-spec.json
 # Output: .temp/architecture.json
 ```
 
 **Database만 생성**:
 ```bash
-sdd-database
+database
 # Input: .temp/parsed-spec.json + architecture.json
 # Output: output/{project}/prisma/
 ```
@@ -1618,7 +1618,7 @@ sdd-database
 Skills는 Claude Code에서 실행되므로 즉시 피드백 가능:
 
 ```
-You: sdd-generate specs/blog.md
+You: generate specs/blog.md
 
 Claude: [파싱 완료, 아키텍처 설계 중...]
 
@@ -1637,42 +1637,42 @@ Claude: [에러 처리 개선...]
 
 ```
 .claude/skills/
-├── sdd-generate.md         # 메인 오케스트레이터
+├── generate.md         # 메인 오케스트레이터
 │   └── 전체 파이프라인 실행
 │
-├── sdd-parse.md            # Phase 1
+├── parse.md            # Phase 1
 │   ├── Input: specs/*.md
 │   └── Output: .temp/parsed-spec.json
 │
-├── sdd-architecture.md     # Phase 2
+├── architecture.md     # Phase 2
 │   ├── Input: .temp/parsed-spec.json
 │   └── Output: .temp/architecture.json
 │
-├── sdd-database.md         # Phase 3
+├── database.md         # Phase 3
 │   ├── Input: parsed-spec + architecture
 │   └── Output: output/{project}/prisma/
 │
-├── sdd-frontend.md         # Phase 4
+├── frontend.md         # Phase 4
 │   ├── Input: parsed-spec + architecture
 │   └── Output: output/{project}/src/components/
 │
-├── sdd-backend.md          # Phase 5
+├── backend.md          # Phase 5
 │   ├── Input: parsed-spec + architecture + schema
 │   └── Output: output/{project}/src/app/api/
 │
-├── sdd-config.md           # Phase 6
+├── config.md           # Phase 6
 │   ├── Input: parsed-spec + architecture
 │   └── Output: package.json, tsconfig.json, etc.
 │
-├── sdd-testing.md          # Phase 7
+├── testing.md          # Phase 7
 │   ├── Input: generated files
 │   └── Output: *.test.tsx, *.spec.ts
 │
-├── sdd-deployment.md       # Phase 8
+├── deployment.md       # Phase 8
 │   ├── Input: parsed-spec + architecture
 │   └── Output: Dockerfile, docker-compose.yml
 │
-└── sdd-fix.md              # Phase 9
+└── fix.md              # Phase 9
     ├── Input: generated project
     └── Output: 수정된 파일들
 ```
@@ -1752,7 +1752,7 @@ touch .claude/skills/my-custom-skill.md
 
 3. **오케스트레이터에 통합** (선택):
 ```markdown
-# .claude/skills/sdd-generate.md
+# .claude/skills/generate.md
 
 10. **Run Phase 10 - My Custom Skill**:
     - Use the `my-custom-skill` skill
@@ -1806,10 +1806,10 @@ Phase 3-8은 독립적이므로 병렬 가능:
 
 ```bash
 # 여러 Claude Code 세션에서 동시 실행
-# Session 1: sdd-database
-# Session 2: sdd-frontend  
-# Session 3: sdd-backend
-# Session 4: sdd-config
+# Session 1: database
+# Session 2: frontend  
+# Session 3: backend
+# Session 4: config
 ```
 
 단, Frontend/Backend는 Database 스키마 참조하므로 주의.
@@ -1845,9 +1845,9 @@ mkdir -p .claude/skills
 **원인**: 이전 Phase를 실행하지 않음
 ```bash
 # Phase 순서대로 실행 필요
-sdd-parse specs/my-app.md      # 먼저
-sdd-architecture                 # 그 다음
-sdd-database                     # 마지막
+parse specs/my-app.md      # 먼저
+architecture                 # 그 다음
+database                     # 마지막
 ```
 
 #### 문제: 생성된 파일이 비어있음
@@ -1882,7 +1882,7 @@ npm run generate specs/my-app.md
 
 ```bash
 # Claude Code에서 실행
-sdd-generate specs/my-app.md
+generate specs/my-app.md
 
 # 장점:
 # - 무료 (Max 플랜)
@@ -1898,36 +1898,410 @@ sdd-generate specs/my-app.md
 
 ---
 
-### 다음 단계: 하이브리드 시스템 (v3.0)
+## v3.0: Command + Sub Agents + Skills 아키텍처 (2025-12-25)
 
-**목표**: 두 방식의 장점 결합
+### 개요
 
-```typescript
-// 환경 변수로 전환
-LLM_PROVIDER=claude-code  # 개발 시
-LLM_PROVIDER=anthropic    # 프로덕션 시
+**v3.0**은 Claude Code의 **Command**, **Sub Agents**, **Skills** 세 가지를 조합하여 최적의 성능과 유연성을 제공합니다.
 
-// lib/agents/base-agent.ts
-interface LLMProvider {
-  generate(prompt: string): Promise<string>;
-}
+### 핵심 개념
 
-class AnthropicProvider implements LLMProvider {
-  async generate(prompt: string) {
-    return await this.anthropic.messages.create({...});
-  }
-}
+```
+Command (사용자 대면 + 오케스트레이션)
+   ↓
+Sub Agents (독립 실행 + 병렬 처리)
+   ↓
+Skills (재사용 로직 + 기존 자산 활용)
+```
 
-class ClaudeCodeProvider implements LLMProvider {
-  async generate(prompt: string) {
-    // Claude Code Skills 호출 로직
+**각 레이어의 역할**:
+
+| 레이어 | 역할 | 장점 |
+|--------|------|------|
+| **Command** | • 사용자 인터랙션<br>• 파이프라인 제어<br>• 체크포인트 관리 | • 명시적 호출 `/generate`<br>• Interactive 모드 가능<br>• 전체 흐름 제어 |
+| **Sub Agent** | • 독립 실행 환경<br>• 병렬 처리<br>• 전문화 | • 컨텍스트 격리<br>• 병렬 실행<br>• Phase별 전문성 |
+| **Skill** | • 실제 로직<br>• 재사용 모듈 | • 기존 Skills 활용<br>• 코드 재사용<br>• 독립 테스트 |
+
+### 파일 구조
+
+```
+.claude/
+├── commands/
+│   └── generate.md           # Main orchestrator
+│
+├── agents/
+│   ├── parse-agent.md
+│   ├── architecture-agent.md
+│   ├── database-agent.md
+│   ├── frontend-agent.md
+│   ├── backend-agent.md
+│   ├── config-agent.md
+│   ├── testing-agent.md
+│   ├── deployment-agent.md
+│   └── fix-agent.md
+│
+└── skills/
+    ├── generate.md            # (Deprecated)
+    ├── parse.md
+    ├── architecture.md
+    ├── database.md
+    ├── frontend.md
+    ├── backend.md
+    ├── config.md
+    ├── testing.md
+    ├── deployment.md
+    └── fix.md
+```
+
+### 실행 흐름
+
+#### Sequential Mode (기본값, 권장)
+
+```
+User → /generate specs/my-money-plan.md
+          ↓
+     Command [메인 컨텍스트]
+     - Interactive 모드
+     - 체크포인트 관리
+          ↓
+     Phase 1: parse-agent
+       → parse skill 실행
+       → 결과 반환
+          ↓
+     Command: 사용자 확인 "Continue to Phase 2?"
+          ↓
+     Phase 2: architecture-agent
+       → architecture skill 실행
+       → 결과 반환
+          ↓
+     Command: 사용자 확인 "Continue to Phase 3?"
+          ↓
+     Phase 3-8: 순차 실행
+       각 Agent → 해당 Skill → 결과 → 사용자 확인
+          ↓
+     Phase 9: fix-agent
+       → fix skill 실행
+          ↓
+     🎉 완료!
+```
+
+#### Parallel Mode (고급, 성능 최적화)
+
+```
+Phase 1-2: 순차 실행 (의존성)
+     ↓
+Phase 3-8: 병렬 실행 ⚡
+┌──────────┬──────────┬──────────┬────────┬─────────┬────────────┐
+Database   Frontend   Backend    Config   Testing   Deployment
+Agent      Agent      Agent      Agent    Agent     Agent
+  ↓          ↓          ↓          ↓        ↓         ↓
+db     fe     be     cfg  test  deploy
+skill      skill      skill      skill    skill     skill
+└──────────┴──────────┴──────────┴────────┴─────────┴────────────┘
+     ↓
+Command: 종합 결과 표시, 사용자 확인
+     ↓
+Phase 9: Fix
+```
+
+**병렬 실행 성능**:
+```
+Sequential: 350초 (5분 50초)
+Parallel:   120초 (2분) - 가장 긴 작업 기준
+
+⚡ 시간 절약: 230초 (3분 50초, 65% 단축!)
+```
+
+### 사용법
+
+#### 1. Interactive + Sequential (기본값, 첫 테스트 권장)
+
+```bash
+/generate specs/my-money-plan.md
+```
+
+**특징**:
+- ✅ 각 Phase 후 사용자 승인
+- ✅ 순차 실행으로 안정성
+- ✅ 디버깅 용이
+- ✅ 수정/건너뛰기 가능
+
+**출력 예시**:
+```
+🔹 Phase 2: Architecture Design
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Architecture designed successfully!
+
+📊 Summary:
+  - Directories: 12
+  - Dependencies: 21 packages
+  - Planned Files: 19
+
+💾 Checkpoint: .temp/checkpoint.json
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Continue to Phase 3 (Database)? (yes/no/modify/skip)
+```
+
+#### 2. Interactive + Parallel
+
+```bash
+/generate specs/my-money-plan.md --parallel
+```
+
+**특징**:
+- ✅ Phase 3-8 병렬 실행 (50% 빠름)
+- ✅ 여전히 사용자 확인
+- ⚠️ 안정화 후 사용 권장
+
+#### 3. Auto + Sequential
+
+```bash
+/generate specs/my-money-plan.md --auto
+```
+
+**특징**:
+- ✅ 사용자 확인 없이 연속 실행
+- ✅ 안정적인 순차 실행
+- ✅ 테스트된 spec에 적합
+
+#### 4. Auto + Parallel (최고 속도)
+
+```bash
+/generate specs/my-money-plan.md --auto --parallel
+```
+
+**특징**:
+- ⚡ 최대 성능 (4-5분)
+- ✅ 완전 자동화
+- ⚠️ 안정화 및 검증 후 사용
+
+#### 5. Resume from Checkpoint
+
+```bash
+/generate specs/my-money-plan.md --resume
+```
+
+**특징**:
+- ✅ 중단된 시점부터 재개
+- ✅ 크래시 복구
+- ✅ 실험 및 디버깅 용이
+
+### 체크포인트 시스템
+
+각 Phase 완료 후 `.temp/checkpoint.json`에 자동 저장:
+
+```json
+{
+  "specFile": "specs/my-money-plan.md",
+  "projectName": "my-money-plan",
+  "outputDir": "output/my-money-plan",
+  "mode": "interactive",
+  "executionMode": "sequential",
+  "lastPhase": 3,
+  "completed": ["parse", "architecture", "database"],
+  "timestamp": "2025-12-25T12:00:00Z",
+  "stats": {
+    "totalFiles": 45,
+    "duration": 180
   }
 }
 ```
 
+**혜택**:
+- ✅ 중단 후 재개 가능
+- ✅ 크래시 자동 복구
+- ✅ 실험적 실행 가능
+- ✅ 디버깅 용이
+
+### Agent 구조 예시
+
+#### Command: generate.md
+
+```markdown
+---
+description: Generate complete application with step-by-step approval
+argument-hint: [spec-file] [--auto] [--parallel] [--resume]
 ---
 
-**Version**: 2.0.0 (Skills 추가)
-**Last Updated**: 2025-12-23
-**Status**: Skills 방식 추가, 테스트 진행 중
+# SDD Generate Pipeline
+
+Orchestrates 9 specialized agents:
+
+1. Phase 1: Use parse-agent
+   - Show results
+   - Ask user: "Continue to Phase 2?"
+
+2. Phase 2: Use architecture-agent
+   - Show results
+   - Ask user: "Continue to Phase 3?"
+
+3-8. [Sequential] Execute one by one
+     [Parallel] Launch all simultaneously
+
+9. Phase 9: Use fix-agent
+```
+
+#### Sub Agent: database-agent.md
+
+```markdown
+---
+name: database-agent
+description: Generate Prisma schema using database skill
+tools: Read, Write, Glob
+model: sonnet
+---
+
+You are a database schema expert.
+
+1. Read .temp/parsed-spec.json and architecture.json
+2. Use the `database` skill to generate schema
+3. Validate output
+4. Return summary:
+   - Models count
+   - Relations count
+   - Generated files
+```
+
+#### Skill: database.md (기존 그대로)
+
+```markdown
+---
+name: database
+description: Generate Prisma database schema from spec
+---
+
+(기존 로직 그대로 유지)
+```
+
+### Interactive 모드 사용자 옵션
+
+각 Phase 후 선택 가능:
+
+- **yes**: 다음 Phase 진행
+- **no**: 중단 (체크포인트 저장)
+- **modify**: 결과 수정 후 Phase 재실행
+- **skip**: 이 Phase 건너뛰고 다음으로
+
+### 성능 비교
+
+| 모드 | 시간 | 특징 | 사용 시점 |
+|------|------|------|-----------|
+| Interactive + Sequential | 8-10분 | 안정적, 디버깅 용이 | 첫 테스트, 학습 |
+| Interactive + Parallel | 4-5분 | 빠름, 확인 가능 | 안정화 후 |
+| Auto + Sequential | 8-10분 | 자동, 안정적 | CI/CD, 검증된 spec |
+| Auto + Parallel | 4-5분 | 최고 속도 | 프로덕션, 대량 생성 |
+
+### v2.0 vs v3.0 비교
+
+| 특징 | v2.0 (Skills) | v3.0 (Command + Agents + Skills) |
+|------|---------------|----------------------------------|
+| **구조** | Skills 직접 호출 | Command → Agents → Skills |
+| **병렬 실행** | ❌ 불가능 | ✅ 가능 (Phase 3-8) |
+| **속도** | 8-10분 | 4-5분 (병렬 시) |
+| **독립성** | 메인 컨텍스트 공유 | Agent별 독립 컨텍스트 |
+| **재사용** | Skills | Skills + Agents |
+| **명시성** | 자동 발견 | `/generate` 명령 |
+| **Interactive** | ✅ 가능 | ✅ 가능 (더 구조화) |
+| **체크포인트** | ✅ 가능 | ✅ 가능 (동일) |
+| **복잡도** | ⭐⭐ 중간 | ⭐⭐⭐ 높음 |
+| **성능** | ⭐⭐ 보통 | ⭐⭐⭐ 우수 |
+
+### 언제 v3.0을 사용하나?
+
+**v3.0 사용 (Command + Agents + Skills)**:
+- ✅ 성능이 중요할 때 (병렬 실행)
+- ✅ 대규모 프로젝트
+- ✅ 각 Phase 독립성이 필요할 때
+- ✅ 명시적 제어가 필요할 때
+
+**v2.0 사용 (Skills)**:
+- ✅ 간단한 프로젝트
+- ✅ 빠른 프로토타이핑
+- ✅ 학습 목적
+- ✅ 순차 실행만 필요할 때
+
+### 베스트 프랙티스
+
+#### 1. 단계적 접근
+
+```bash
+# 1단계: Sequential로 안정화
+/generate specs/my-app.md
+
+# 2단계: Parallel 테스트
+/generate specs/my-app.md --parallel
+
+# 3단계: Auto 모드 전환
+/generate specs/my-app.md --auto --parallel
+```
+
+#### 2. 체크포인트 활용
+
+```bash
+# Phase 5에서 중단된 경우
+/generate specs/my-app.md --resume
+
+# 특정 Phase부터 재시작하려면 checkpoint.json 수정
+```
+
+#### 3. 에러 처리
+
+```
+Agent 실패 시 옵션:
+1. Retry - 재시도
+2. Skip - 건너뛰기
+3. Stop - 중단 후 나중에 재개
+4. Abort - 전체 취소
+```
+
+### 트러블슈팅
+
+#### Q: 병렬 실행 시 일부 Agent 실패
+
+**A**: Sequential 모드로 전환하여 어느 Phase에서 실패하는지 확인
+
+```bash
+/generate specs/my-app.md --sequential
+```
+
+#### Q: 체크포인트에서 재개 시 에러
+
+**A**: `.temp/checkpoint.json` 삭제 후 처음부터 재시작
+
+```bash
+rm .temp/checkpoint.json
+/generate specs/my-app.md
+```
+
+#### Q: Parallel 모드가 Sequential보다 느림
+
+**A**: 작은 프로젝트는 Agent 생성 오버헤드가 더 클 수 있음. Sequential 사용 권장.
+
+---
+
+## 버전 히스토리
+
+**v1.0 (API 기반)**: TypeScript + Anthropic API
+- 완전 자동화
+- 빠름 (4-5분)
+- API 크레딧 필요 ($0.38/app)
+
+**v2.0 (Skills 기반)**: Claude Code Skills
+- 비용 무료 (Max plan)
+- Interactive 가능
+- 순차 실행만 (8-10분)
+
+**v3.0 (Command + Agents + Skills)**: 최적 조합
+- 비용 무료
+- Interactive 가능
+- 병렬 실행 가능 (4-5분)
+- 독립성 확보
+
+---
+
+**Version**: 3.0.0 (Command + Agents + Skills)
+**Last Updated**: 2025-12-25
+**Status**: 구현 완료, 테스트 대기
 

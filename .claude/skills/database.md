@@ -4,7 +4,7 @@
 
 **Usage**:
 ```bash
-sdd-database
+database
 ```
 
 ## Instructions

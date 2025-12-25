@@ -4,7 +4,7 @@
 
 **Usage**:
 ```bash
-sdd-config
+config
 ```
 
 ## Instructions

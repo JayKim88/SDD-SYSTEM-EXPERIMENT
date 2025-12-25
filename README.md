@@ -42,9 +42,55 @@ Spec (명세서) → 10개 AI Agents → 완전한 Next.js 앱
 
 ## Quick Start
 
-### 방법 1: Spec Writer Agent 사용 (권장) ⭐
+### 🎯 어떤 방식을 사용해야 하나요?
 
-AI가 대화형으로 spec을 작성해줍니다!
+| 방식 | 사용 시나리오 | 특징 |
+|------|--------------|------|
+| **방법 1 (v2.0)** | Claude Code로 대화형 개발 | 🌟 AI와 대화하며 개발, 실시간 피드백 |
+| **방법 2 (v1.0)** | CLI로 자동 생성 | ⚡ 빠른 자동화, CI/CD 통합 |
+| **방법 3** | 수동으로 spec 작성 | ✍️ 정확한 spec 작성, 반복 생성 |
+
+---
+
+### 방법 1: Claude Code Skills 사용 (v2.0, 권장) ⭐
+
+**Claude Code CLI**에서 AI와 대화하며 앱을 생성합니다.
+
+```bash
+# 1. 설치
+git clone <repository-url>
+cd sdd-system
+npm install
+
+# 2. 환경 변수 설정
+echo "ANTHROPIC_API_KEY=your_api_key_here" > .env
+
+# 3. Claude Code 실행
+claude-code  # 또는 npx claude-code
+
+# 4. Claude와 대화
+You: /sdd-generate "Personal finance tracker"
+# AI가 대화형으로 spec 작성 → 앱 생성 → 테스트 → 수정 진행
+
+# 5. 생성된 앱 실행
+cd output/personal-finance-tracker
+npm install
+npm run dev
+```
+
+**특징**:
+- 🤖 AI와 실시간 대화하며 개발
+- 🔄 즉시 피드백 및 수정
+- ✅ 에러 발견 시 자동 수정
+- 📊 10개 Skills가 순차 실행 (generate → parse → architecture → ... → fix)
+
+> 자세한 사용법: [SDD_SYSTEM_ARCHITECTURE.md](./docs/SDD_SYSTEM_ARCHITECTURE.md)
+
+---
+
+### 방법 2: CLI 사용 (v1.0, 자동화) ⚡
+
+**Spec Writer Agent**로 spec 작성 후 CLI로 자동 생성합니다.
 
 ```bash
 # 1. 설치
@@ -67,7 +113,14 @@ npm install
 npm run dev
 ```
 
-### 방법 2: 수동 Spec 작성
+**특징**:
+- ⚡ 빠른 자동 생성 (~5분)
+- 🔁 CI/CD 파이프라인 통합 가능
+- 📦 9개 Agents가 순차 실행
+
+---
+
+### 방법 3: 수동 Spec 작성
 
 직접 spec을 작성할 수도 있습니다.
 
@@ -105,7 +158,9 @@ echo "ANTHROPIC_API_KEY=your_api_key_here" > .env
 ```
 
 ```bash
-# 4. 앱 생성
+# 4. 앱 생성 (Claude Code 또는 CLI)
+claude-code  # → You: /sdd-generate specs/my-app.md
+# 또는
 npm run generate specs/my-app.md
 
 # 5. 실행
@@ -538,8 +593,12 @@ try {
 
 ## 문서
 
-### 상세 문서
-- [AGENT_ARCHITECTURE.md](./docs/AGENT_ARCHITECTURE.md) - Agent 상세 설계 (10개 Agent 명세)
+### 아키텍처 문서
+- [SDD_SYSTEM_ARCHITECTURE.md](./docs/SDD_SYSTEM_ARCHITECTURE.md) - 전체 시스템 아키텍처 (v1.0 ~ v3.0)
+- [AGENT_ARCHITECTURE.md](./docs/AGENT_ARCHITECTURE.md) - Agent 상세 설계 (v1.0 API 구현)
+- [CLAUDE_CODE_LEARNING.md](./docs/CLAUDE_CODE_LEARNING.md) - Claude Code 학습 가이드
+
+### 구현 가이드
 - [IMPLEMENTATION_GUIDE.md](./docs/IMPLEMENTATION_GUIDE.md) - Agent 구현 가이드
 - [IMPLEMENTATION_LOG.md](./docs/IMPLEMENTATION_LOG.md) - 구현 기록 및 테스트 결과
 

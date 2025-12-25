@@ -4,7 +4,7 @@
 
 **Usage**:
 ```bash
-sdd-parse <spec-file-path>
+parse <spec-file-path>
 ```
 
 ## Instructions
