@@ -184,269 +184,342 @@ npm run dev
 
 ---
 
-## Agent 구성
+## 시스템 구성 (v3.0)
 
-### ✅ 구현 완료 (8개) + ⏳ 구현 예정 (2개)
-
-#### 0. Spec Writer Agent ⭐ NEW!
-**역할**: AI 대화형 spec 작성, 개선, 검토
+### 3-Layer 아키텍처
 
 ```
-Input:  사용자 아이디어 또는 기존 spec
-Output: 완성된 specs/*.md 파일
-Modes:  new (신규), refine (개선), review (검토)
+Command (사용자 대면)
+   ↓
+Sub Agents (전문화된 실행)
+   ↓
+Skills (재사용 가능한 로직)
 ```
+
+### Layer 1: Command (1개)
+
+#### generate.md
+**위치**: `.claude/commands/generate.md`
+**역할**: 전체 워크플로우 오케스트레이션
+
+**기능**:
+- 사용자 인터랙션 (Interactive Mode)
+- Phase별 Sub Agent 호출
+- Checkpoint 저장/복구
+- 순차/병렬 실행 제어
 
 **사용법**:
 ```bash
-# 새 spec 작성
-npm run spec:new -- --idea "E-commerce platform" --template ecommerce
-
-# 기존 spec 개선
-npm run spec:refine specs/my-app.md
-
-# Spec 검토 및 자동 수정
-npm run spec:review specs/my-app.md --fix
+/generate specs/my-app.md                    # Interactive + Sequential
+/generate specs/my-app.md --auto             # Auto + Sequential
+/generate specs/my-app.md --parallel         # Interactive + Parallel
+/generate specs/my-app.md --auto --parallel  # Auto + Parallel
+/generate specs/my-app.md --resume           # 중단 지점부터 재개
 ```
+
+---
+
+### Layer 2: Sub Agents (9개)
+
+**위치**: `.claude/agents/`
+
+| Agent | Model | 역할 | Output |
+|-------|-------|------|--------|
+| **parse-agent** | haiku | Spec 파싱 | .temp/parsed-spec.json |
+| **architecture-agent** | sonnet | 프로젝트 구조 설계 | .temp/architecture.json |
+| **database-agent** | sonnet | DB 스키마 생성 | prisma/schema.prisma |
+| **frontend-agent** | sonnet | React 컴포넌트 생성 | components/, app/ |
+| **backend-agent** | sonnet | API Routes 생성 | app/api/, lib/actions/ |
+| **config-agent** | sonnet | 설정 파일 생성 | package.json, configs |
+| **testing-agent** | sonnet | 테스트 코드 생성 | *.test.tsx, *.spec.ts |
+| **deployment-agent** | sonnet | Docker/CI/CD 생성 | Dockerfile, workflows |
+| **fix-agent** | sonnet | 에러 자동 수정 | 수정된 파일들 |
 
 **특징**:
-- 🤖 AI 대화형 기획 지원
-- 📝 데이터 모델, API, 페이지 자동 설계
-- ✅ 일관성 자동 검증 (Critical 이슈 자동 발견)
-- 💡 기술 스택 추천
-- 🔧 자동 수정 기능
+- 독립적인 컨텍스트에서 실행
+- 사용자 인터랙션 불가 (Parent-Delegate 패턴)
+- 내부적으로 Skill 호출
+- 병렬 실행 가능 (Phase 3-8)
 
-#### 1. Spec Parser Agent
-**역할**: Markdown 명세서 → 구조화된 JSON
+---
 
-```
-Input:  specs/my-app.md
-Output: .temp/parsed-spec.json
-```
+### Layer 3: Skills (10개)
 
-#### 2. Architecture Agent
-**역할**: 프로젝트 구조 및 파일 리스트 설계
+**위치**: `.claude/skills/`
 
-```
-Input:  .temp/parsed-spec.json
-Output: .temp/architecture.json (68 files 계획)
-```
+| Skill | 역할 | 사용처 |
+|-------|------|--------|
+| **parse.md** | Spec → JSON 파싱 | parse-agent |
+| **architecture.md** | 프로젝트 구조 설계 | architecture-agent |
+| **database.md** | DB 스키마 생성 | database-agent |
+| **frontend.md** | React 컴포넌트 생성 | frontend-agent |
+| **backend.md** | API Routes 생성 | backend-agent |
+| **config.md** | 설정 파일 생성 | config-agent |
+| **testing.md** | 테스트 코드 생성 | testing-agent |
+| **deployment.md** | Docker/CI/CD 생성 | deployment-agent |
+| **fix.md** | 에러 자동 수정 | fix-agent |
+| **generate.md** | 전체 파이프라인 | (Deprecated, Command 사용) |
 
-#### 3. Database Agent
-**역할**: Prisma/Drizzle 스키마 생성
-
-```
-Input:  parsedSpec + architecture
-Output: prisma/schema.prisma
-        lib/database/client.ts
-        prisma/seed.ts
-        (~4-12 files)
-```
-
-#### 4. Frontend Agent
-**역할**: React/Next.js 컴포넌트 생성
-
-```
-Input:  parsedSpec + architecture
-Output: components/ui/*.tsx
-        components/forms/*.tsx
-        app/*/page.tsx
-        contexts/*Provider.tsx
-        (~20-40 files)
-```
-
-#### 5. Backend Agent
-**역할**: API Routes 및 Server 로직 생성
-
-```
-Input:  parsedSpec + architecture
-Output: app/api/**/ route.ts
-        lib/actions/*.ts
-        middleware.ts
-        (~10-20 files)
-```
-
-#### 6. Config Agent
-**역할**: 프로젝트 설정 파일 생성 (템플릿 기반, AI 호출 없음)
-
-```
-Input:  parsedSpec + architecture + database (ORM 감지)
-Output: package.json (Prisma deps + test deps 자동 포함)
-        tsconfig.json
-        tailwind.config.ts
-        .env.example
-        (9 files)
-```
-
-#### 7. Testing Agent ⏳
-**역할**: 테스트 파일 자동 생성 (구현 예정)
-
-```
-Input:  parsedSpec + architecture + frontend + backend
-Output: components/**/*.test.tsx
-        app/api/**/*.test.ts
-        e2e/**/*.spec.ts
-        vitest.config.ts
-        playwright.config.ts
-        (~15-50 files)
-```
-
-#### 8. Deployment Agent ⏳
-**역할**: Docker, CI/CD 설정 생성 (구현 예정, 템플릿 기반)
-
-```
-Input:  parsedSpec + architecture + database (ORM 감지)
-Output: Dockerfile
-        docker-compose.yml
-        .dockerignore
-        .github/workflows/ci.yml
-        DEPLOYMENT.md
-        (5 files)
-```
-
-#### 9. Fix Agent ✅
-**역할**: TypeScript/ESLint 에러 자동 수정
-
-```
-Input:  projectPath (생성된 프로젝트)
-Process:
-  1. TypeScript/ESLint 에러 검사
-  2. 에러를 파일별로 그룹화
-  3. Claude에게 각 파일 수정 요청
-  4. 수정된 코드 적용
-  5. 재검증 (최대 3회)
-Output: 수정된 파일 목록, 에러 수정 통계
-```
+**특징**:
+- 재사용 가능한 비즈니스 로직
+- Sub Agent 없이도 직접 호출 가능
+- 메인 컨텍스트에서 실행
 
 ---
 
 ## 워크플로우
 
-### 전체 실행 흐름
+### 실행 흐름 (v3.0)
+
+#### Sequential Mode (순차 실행)
 
 ```
-Markdown Spec (specs/my-app.md)
-    ↓
-Phase 0: Spec Parser Agent
-    → parsed-spec.json
-    ↓
-Phase 1: Architecture Agent
-    → architecture.json (68 files 계획)
-    ↓
-Phase 2: Database Agent
-    → prisma/schema.prisma, seed.ts (12 files)
-    ↓
-Phase 3: Frontend Agent
-    → components/, app/ (27 files)
-    ↓
-Phase 4: Backend Agent
-    → app/api/, lib/actions/ (16 files)
-    ↓
-Phase 5: Config Agent (Database ORM 인식)
-    → package.json (Prisma deps + test deps), configs (9 files)
-    ↓
-Phase 6: Testing Agent
-    → test files, test configs (~15-50 files)
-    ↓
-Phase 7: Deployment Agent
-    → Dockerfile, CI/CD configs (5 files)
-    ↓
-Phase 8: Fix Agent
-    → 에러 검사 및 자동 수정 (TypeScript + ESLint)
-    ↓
-Complete Production-Ready Next.js App (~90-110 files, 에러 수정 완료)
+User: /generate specs/my-app.md
+  ↓
+Phase 1: Parse
+  → parse-agent → parse skill
+  → .temp/parsed-spec.json
+  → [Interactive] Continue? (yes/no/modify/skip)
+  ↓
+Phase 2: Architecture
+  → architecture-agent → architecture skill
+  → .temp/architecture.json
+  → [Interactive] Continue? (yes/no/modify/skip)
+  ↓
+Phase 3: Database
+  → database-agent → database skill
+  → prisma/schema.prisma
+  → [Interactive] Continue?
+  ↓
+Phase 4: Frontend
+  → frontend-agent → frontend skill
+  → components/, app/
+  → [Interactive] Continue?
+  ↓
+Phase 5: Backend
+  → backend-agent → backend skill
+  → app/api/, lib/actions/
+  → [Interactive] Continue?
+  ↓
+Phase 6: Config
+  → config-agent → config skill
+  → package.json, configs
+  → [Interactive] Continue?
+  ↓
+Phase 7: Testing
+  → testing-agent → testing skill
+  → *.test.tsx, *.spec.ts
+  → [Interactive] Continue?
+  ↓
+Phase 8: Deployment
+  → deployment-agent → deployment skill
+  → Dockerfile, CI/CD
+  → [Interactive] Continue?
+  ↓
+Phase 9: Fix
+  → fix-agent → fix skill
+  → 에러 수정 완료
+  ↓
+Complete! (~90-110 files)
+
+⏱️ 시간: 8-10분
 ```
 
-### CLI 실행 예시
+#### Parallel Mode (병렬 실행)
+
+```
+User: /generate specs/my-app.md --parallel
+  ↓
+Phase 1: Parse (순차 필수)
+  → .temp/parsed-spec.json
+  ↓
+Phase 2: Architecture (순차 필수)
+  → .temp/architecture.json
+  ↓
+Phase 3-8: 병렬 실행 (동시에 6개 Agent 실행)
+  ├─ database-agent   → prisma/
+  ├─ frontend-agent   → components/, app/
+  ├─ backend-agent    → app/api/
+  ├─ config-agent     → configs
+  ├─ testing-agent    → tests
+  └─ deployment-agent → Docker, CI/CD
+  ↓
+  [모든 Agent 완료 대기]
+  ↓
+  [Interactive] Summary 확인 → Continue?
+  ↓
+Phase 9: Fix (순차 필수)
+  → 전체 에러 검사 및 수정
+  ↓
+Complete! (~90-110 files)
+
+⏱️ 시간: 4-5분 (59% 단축)
+```
+
+### Checkpoint System
+
+각 Phase 완료 후 자동 저장:
+```json
+// .temp/checkpoint.json
+{
+  "specFile": "specs/my-app.md",
+  "lastPhase": 5,
+  "completed": ["parse", "architecture", "database", "frontend", "backend"],
+  "mode": "interactive",
+  "executionMode": "sequential"
+}
+```
+
+중단 후 재개:
+```bash
+/generate specs/my-app.md --resume
+# Phase 6 (Config)부터 자동 재개
+```
+
+### 실행 예시 (v3.0 Interactive Mode)
 
 ```bash
-$ npm run generate specs/todo-app.md
+$ claude-code
+You: /generate specs/todo-app.md
 
-🚀 SDD System - Starting...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Phase 1: Spec Parser
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📝 Phase 0: Spec Parser Agent
-   Reading: specs/todo-app.md
-   ✅ Generated: .temp/parsed-spec.json
+Reading: specs/todo-app.md
 
-🏗️  Phase 1: Architecture Agent
-   Designing project structure...
-   ✅ Generated: .temp/architecture.json
+✅ Parsing completed!
 
-💾 Phase 2: Database Agent
-   Generating database schema & ORM code...
-   ✅ Generated: 12 database files
-      - Schema: 1
-      - Seeds: 1
-      - Clients: 2
+Summary:
+  - Models: 2 (User, Todo)
+  - Endpoints: 4 (GET, POST, PATCH, DELETE)
+  - Components: 5 (TodoList, TodoItem, AddTodo, etc.)
+  - Pages: 3 (Home, Dashboard, Login)
 
-🎨 Phase 3: Frontend Agent
-   Generating React/Next.js components...
-   ✅ Generated: 27 frontend files
-      - Components: 14
-      - Pages: 4
-      - Providers: 2
+Output: .temp/parsed-spec.json
+Checkpoint: .temp/checkpoint.json
 
-⚙️  Phase 4: Backend Agent
-   Generating API routes & server logic...
-   ✅ Generated: 16 backend files
-      - API Routes: 2
-      - Middleware: 1
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Continue to Phase 2 (Architecture)? (yes/no/modify/skip): yes
 
-📦 Phase 5: Config Agent
-   Generating config files...
-   Detected ORM from Database Agent: prisma
-   ✅ Generated: 9 config files
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Phase 2: Architecture Design
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🧪 Phase 6: Testing Agent
-   Generating test suites...
-   ✅ Generated: 35 test files
-      - Component tests: 14
-      - API tests: 2
-      - E2E tests: 3
-      - Config files: 4
+Designing project structure...
 
-🚀 Phase 7: Deployment Agent
-   Generating deployment files...
-   ✅ Generated: 5 deployment files
+✅ Architecture designed!
 
-🔧 Phase 8: Fix Agent
-   Checking and fixing errors...
-   ✅ Fix completed:
-      - Attempts: 2
-      - Errors fixed: 8
-      - Remaining errors: 0
-      - Files modified: 3
+Summary:
+  - Directories: 12
+  - Planned files: 64
+  - Dependencies: 18 packages
+  - Tech stack: Next.js 14, Prisma, Tailwind CSS
 
-🎉 Success! Your app is ready.
+Output: .temp/architecture.json
+Checkpoint: .temp/checkpoint.json
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Continue to Phase 3 (Database)? (yes/no/modify/skip): yes
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Phase 3: Database Schema
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Generating Prisma schema...
+
+✅ Database schema generated!
+
+Summary:
+  - Models: 2 (User, Todo)
+  - Relations: 1 (User ↔ Todo)
+  - Files: 4 (schema.prisma, client.ts, seed.ts, types.ts)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Continue to Phase 4 (Frontend)? (yes/no/modify/skip): yes
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Phase 4-8: Parallel Execution Mode
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Running 5 agents in parallel...
+
+⏳ frontend-agent   (0/1) ...
+⏳ backend-agent    (0/1) ...
+⏳ config-agent     (0/1) ...
+⏳ testing-agent    (0/1) ...
+⏳ deployment-agent (0/1) ...
+
+✅ frontend-agent   (1/1) - 24 files
+✅ config-agent     (1/1) - 9 files
+✅ backend-agent    (1/1) - 14 files
+✅ testing-agent    (1/1) - 32 files
+✅ deployment-agent (1/1) - 5 files
+
+Combined Summary:
+  - Frontend: 24 files (components, pages, providers)
+  - Backend: 14 files (API routes, actions)
+  - Config: 9 files (package.json, tsconfig, etc.)
+  - Testing: 32 files (unit, integration, e2e)
+  - Deployment: 5 files (Dockerfile, CI/CD)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Continue to Phase 9 (Fix)? (yes/no/modify/skip): yes
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Phase 9: Fix Errors
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Checking TypeScript and ESLint errors...
+
+Found 5 errors:
+  - app/page.tsx: Missing 'use client'
+  - components/TodoItem.tsx: Type error
+  - lib/db.ts: Import error
+
+Fixing errors... (Attempt 1/3)
+
+✅ All errors fixed!
+
+Summary:
+  - Errors found: 5
+  - Errors fixed: 5
+  - Files modified: 3
+  - Attempts: 1
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎉 Generation Complete!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📦 Project: output/todo-app
-📄 Files Generated:
-   Database: 12 files
-   Frontend: 27 files
-   Backend: 16 files
-   Config: 9 files
-   Testing: 35 files
-   Deployment: 5 files
-   Total: 104 files
+📄 Total files: 88 files
+
+Files by type:
+  - Database: 4 files
+  - Frontend: 24 files
+  - Backend: 14 files
+  - Config: 9 files
+  - Testing: 32 files
+  - Deployment: 5 files
+
+⏱️ Total time: 4 minutes 32 seconds
+💾 Checkpoint saved: .temp/checkpoint.json
 
 📖 Next steps:
    cd output/todo-app
    npm install
-   # Set up database
    cp .env.example .env.local
    # Edit .env.local with your DATABASE_URL
    npm run db:push
    npm run db:seed
    npm run dev
-   # Run tests
-   npm run test          # Run unit & integration tests
-   npm run test:e2e      # Run E2E tests
-   # Or run with Docker
-   docker-compose up -d  # Start with Docker
 ```
 
-**실행 시간**: ~4-5분 (Todo 앱 기준, 테스트 포함)
-**Token 사용**: ~150K tokens (~$0.50-0.70)
+**실행 모드별 시간**:
+- Interactive + Sequential: ~8-10분
+- Interactive + Parallel: ~5-7분
+- Auto + Sequential: ~8-10분
+- Auto + Parallel: ~4-5분 (최고 속도)
 
 ---
 
@@ -454,55 +527,95 @@ $ npm run generate specs/todo-app.md
 
 ```
 sdd-system/                          # SDD 시스템 루트
-├── lib/
-│   └── agents/                      # ✅ Agent 구현
-│       ├── base-agent.ts           # Base Agent 추상 클래스
-│       │
-│       ├── spec-parser/            # Agent 1
-│       │   ├── AGENT.md
-│       │   ├── index.ts
-│       │   └── types.ts
-│       │
-│       ├── architecture/           # Agent 2
-│       ├── database/               # Agent 3
-│       ├── frontend/               # Agent 4
-│       ├── backend/                # Agent 5
-│       ├── config/                 # Agent 6
-│       ├── testing/                # Agent 7
-│       ├── deployment/             # Agent 8
-│       └── fix/                    # Agent 9 ✅
 │
-├── specs/                          # 📝 입력: Spec 파일
-│   ├── todo-app.md                # Todo App Spec
-│   └── voice-journal-web.md       # Voice Journal Spec
+├── .claude/                         # 🤖 v3.0 Claude Code 구성
+│   ├── commands/                    # Layer 1: Commands
+│   │   └── generate.md             # 메인 오케스트레이터
+│   │
+│   ├── agents/                      # Layer 2: Sub Agents
+│   │   ├── parse-agent.md          # Phase 1
+│   │   ├── architecture-agent.md   # Phase 2
+│   │   ├── database-agent.md       # Phase 3
+│   │   ├── frontend-agent.md       # Phase 4
+│   │   ├── backend-agent.md        # Phase 5
+│   │   ├── config-agent.md         # Phase 6
+│   │   ├── testing-agent.md        # Phase 7
+│   │   ├── deployment-agent.md     # Phase 8
+│   │   └── fix-agent.md            # Phase 9
+│   │
+│   └── skills/                      # Layer 3: Skills
+│       ├── parse.md
+│       ├── architecture.md
+│       ├── database.md
+│       ├── frontend.md
+│       ├── backend.md
+│       ├── config.md
+│       ├── testing.md
+│       ├── deployment.md
+│       ├── fix.md
+│       └── generate.md             # (Deprecated)
 │
-├── .temp/                          # 🔄 중간 산출물 (자동 생성)
-│   ├── parsed-spec.json
-│   └── architecture.json
+├── lib/                             # 🔧 v1.0 CLI 구현 (레거시)
+│   └── agents/                      # TypeScript Agent 구현
+│       ├── base-agent.ts
+│       ├── spec-parser/
+│       ├── architecture/
+│       ├── database/
+│       ├── frontend/
+│       ├── backend/
+│       ├── config/
+│       ├── testing/
+│       ├── deployment/
+│       └── fix/
 │
-├── output/                         # 🎁 출력: 생성된 앱
-│   ├── todo-app/                  # 완전한 Next.js 프로젝트
-│   │   ├── app/
-│   │   ├── components/
-│   │   ├── lib/
-│   │   ├── prisma/
+├── specs/                           # 📝 입력: Spec 파일
+│   ├── todo-app.md
+│   ├── my-money-plan.md
+│   └── voice-journal-web.md
+│
+├── .temp/                           # 🔄 중간 산출물 (자동 생성)
+│   ├── parsed-spec.json            # Phase 1 output
+│   ├── architecture.json           # Phase 2 output
+│   └── checkpoint.json             # v3.0 Checkpoint
+│
+├── output/                          # 🎁 출력: 생성된 앱
+│   ├── todo-app/                   # 완전한 Next.js 프로젝트
+│   │   ├── app/                    # App Router
+│   │   ├── components/             # React 컴포넌트
+│   │   ├── lib/                    # Utilities
+│   │   ├── prisma/                 # Database
+│   │   ├── tests/                  # 테스트
+│   │   ├── Dockerfile              # Docker
 │   │   ├── package.json
 │   │   └── ...
 │   │
-│   └── voice-journal-web/
+│   └── my-money-plan/
 │       └── ...
 │
-├── cli.ts                          # 🚀 CLI 진입점
-├── package.json                    # SDD 시스템 의존성
+├── docs/                            # 📚 프로젝트 문서
+│   ├── SDD_SYSTEM_ARCHITECTURE.md  # 전체 아키텍처 (v1.0~v3.0)
+│   ├── IMPLEMENTATION_GUIDE.md     # 구현 가이드
+│   ├── IMPLEMENTATION_LOG.md       # 구현 기록
+│   └── CLAUDE_CODE_LEARNING.md     # Claude Code 학습 가이드
+│
+├── cli.ts                           # 🚀 v1.0 CLI 진입점
+├── package.json                     # SDD 시스템 의존성
 ├── tsconfig.json
-├── README.md                       # 이 파일
-├── docs/                           # 프로젝트 문서
-│   ├── SDD_SYSTEM_ARCHITECTURE.md # 전체 아키텍처 (v1.0~v3.0)
-│   ├── IMPLEMENTATION_GUIDE.md    # 구현 가이드
-│   ├── IMPLEMENTATION_LOG.md      # 구현 기록
-│   └── CLAUDE_CODE_LEARNING.md    # Claude Code 학습 가이드
-└── .env                            # API Keys
+├── README.md                        # 이 파일
+└── .env                             # API Keys
 ```
+
+### v3.0 vs v1.0 구조 비교
+
+| 구성 | v1.0 (CLI) | v3.0 (Claude Code) |
+|------|-----------|-------------------|
+| **위치** | `lib/agents/` | `.claude/` |
+| **언어** | TypeScript | Markdown |
+| **실행** | `npm run generate` | `/generate` |
+| **구조** | 9개 Agent 클래스 | 1 Command + 9 Agents + 10 Skills |
+| **상호작용** | 없음 (자동) | Interactive Mode |
+| **병렬 실행** | 불가 | 가능 (Phase 3-8) |
+| **Checkpoint** | 없음 | 자동 저장/복구 |
 
 ---
 
